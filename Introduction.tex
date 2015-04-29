@@ -1,0 +1,65 @@
+\begin{introduction}
+
+\section*{Contexte de l'\'etude: Les applications \`a base de services et les anti-patrons}
+
+Les syst\`emes \`a base de service (SBSs) sont compos\'es de services d\'ej\`a pr\^ets et accessibles par Internet \citep{Erl2008}.
+Les services sont des unit\'es logicielles autonomes, interop\'erables, et r\'eutilisables qui peuvent \^etre impl\'ement\'ees en utilisant un large choix de technologies tels que les services web, REST (\textit{REpresentational State Transfert}), ou SCA (\textit{Service Component Architecture}, une surcouche au SOA).
+La plupart des plateformes web connues du grand public sont de parfaits exemples de SBSs comme Amazon, PayPal et eBay.
+De tels syt\`emes sont complexes --- ils g\'en\`erent des fl\^ots massifs de communication entre les services --- et hautement dynamiques: des services apparaissent, disparaissent ou sont modifi\'es.
+L'\'evolution constante des SOAs (\textit{Service Oriented Architecture Systems}) peut facilement d\'et\'eriorer la qualit\'e de leurs architectures par l'introduction de d\'efauts architecturaux connus sous le nom d'anti-patrons SOA \citep{Moha}.
+Un anti-patron de conception est une solution connue et non-optimale \`a un probl\`eme connu.
+Les anti-patrons sont oppos\'es aux patrons de conception qui sont eux des bonnes pratiques en r\'eponse \`a des probl\`emes connus.
+Les anti-patrons peuvent donc \^etre qualifi\'es de mauvaises pratiques de conception.
+
+Par exemple, le \textit{Tiny Service} est un anti-patron  largement r\'epandu dans les syst\`emes \`a base de services.
+Ce service a une tr\`es petite taille avec tr\`es peu de m\'ethodes qui impl\'ementent seulement une partie d'une abstraction \citep{Dudney2003}.
+Les \textit{Tiny Services} sont g\'en\'eralement accompagn\'es de plusieurs autres services fortement coupl\'es, ce qui induit une complexit\'e dans le d\'eveloppement et r\'eduit la r\'eutilisabilit\'e.
+De plus, il a \'et\'e prouv\'e que les \textit{Tiny Services} sont une des principales raisons d'\'echecs (\textit{failure}) des syst\`emes \`a base de services \citep{Kral2009}.
+
+
+\section*{Probl\`eme \'etudi\'e : La d\'etection des anti-patrons}
+
+\'Etant donn\'e l'impact n\'efaste des anti-patrons sur la r\'eutilisabilit\'e et la maintenabilit\'e des SBS, il existe un besoin clair et urgent de techniques et d'outils visant leur d\'etection.
+Cependant, la nature hautement dynamique et distribu\'ee des SBSs rend la d\'etection automatique des anti-patrons SOA compliqu\'ee.
+C'est un v\'eritable d\'efi, surtout en comparaison avec d'autres outils visant la d\'etection d'anti-patrons dans les syst\`emes objets \citep{Marinescu2004, Fokaefs2007, Moha2010}.
+En 2012, notre \'equipe, compos\'ee de Naouel Moha, Francis Palma, Benjamin Joyen-Conseil, Yann-Ga\"el Gu\'eh\'eneuc, Benoit Beaudry, Jean-Marc J\'ez\'equel et moi m\^eme, a d\'evelopp\'e une approche nomm\'ee SODA (\textit{Service Oriented Detection for Anti-patterns}) \citep{Nayrolles, Moha} qui vise la d\'etection des anti-patrons SOA.
+Cette approche repose sur un langage sp\'ecifique au domaine (\textit{Domain Specific Language}, DSL) pour sp\'ecifier les anti-patrons SOA et est bas\'ee sur des m\'etriques (majoritairement statiques) d'un c\^ot\'e, et sur une m\'ethode de g\'en\'eration automatique d'algorithmes de d\'etection, de l'autre.
+
+
+Bien qu'\'etant efficace et pr\'ecise, SODA souffre de s\'erieuses limitations.
+En effet, SODA ex\'ecute deux phases d'analyse, une premi\`ere statique, suivie d'une seconde, dynamique.
+La premi\`ere analyse statique requiert un acc\`es aux interfaces des services.
+En cons\'equence, SODA ne peut pas analyser dont les sources ne sont pas disponible.
+La seconde phase, \red{\`a moindre port\'ee}, d'analyse dynamique requiert l'\'ex\'ecution concr\`ete du syst\`eme et de ce fait, la cr\'eation de sc\'enarios ex\'ecutables.
+De plus, SODA a \'et\'e cr\'e\'e sp\'ecifiquement pour les syst\`emes de type SCA et sa pr\'ecision tend \`a faiblir lorsque la taille des syst\`emes augmente.
+\'Etant donn\'e les limitations de SODA, il y a un \red{espace pour l'am\'elioration de} nos approches et outils pour la d\'etection d'anti-patrons SOA.
+Ces am\'eliorations doivent apporter une d\'etection pr\'ecise, efficace et applicable \`a toutes les technologies SOA (REST, SCA, service web, ...) et ce quelque soit la taille du syst\`eme.
+Dans ce m\'emoire, nous proposons une approche nomm\'ee SOMAD (\textit{Service Oriented Mining for AntiPatterns Detection}).
+Cette approche ne requiert pas de sc\'enarios, \`a l'inverse de SODA, et repose uniquement sur les traces d'ex\'ecution qui peuvent \^etre disponibles dans toutes les technologies SOA.
+SOMAD est capable d'\'eliminer les donn\'ees non pertinentes en utilisant une technique de fouille de donn\'ees: la fouille de r\`egles d'association s\'equentielle.
+La fouille de r\`egles d'association \citep{Agrawal1994} et a fortiori la fouille de r\`egles d'association s\'equentielles -- en particulier l'algorithme \textit{RuleGrowth} \citep{Fournier-viger2011} -- sont des m\'ethodes servant \`a d\'ecouvrir des relations int\'eressantes dans de larges bases de donn\'ees.
+SOMAD \red{applique} ses m\'ethodes sur les traces d'ex\'ecution pour d\'ecouvrir des anti-patrons SOA \red{sous forme de configurations particuli\`eres dans la composition des r\`egles d'association.} Pour ce faire, nous utilisons une variante de la fouille de r\`egles d'association bas\'ee sur les s\'equences ou \'episodes.
+Dans notre cas, les s\'equences repr\'esentent \red{des suites d'appels} de services et de m\'ethodes.
+Ensuite, nous filtrons ces r\`egles d'association en utilisant une suite de m\'etriques \red{d\'edi\'ees afin d'}extraire la connaissance pertinente des r\`egles d'association.
+
+\section*{Contributions}
+
+Les principales contributions li\'ees \`a ce m\'emoire sont les suivantes:
+
+\begin{enumerate}
+\item Une nouvelle approche nomm\'ee SOMAD pour la d\'etection des anti-patrons SOA.
+Cette approche est bas\'ee sur des r\`egles d'association fouill\'ees sur des traces d'ex\'ecution qui peuvent provenir de toutes les technologies SOA.
+\item une validation empirique de notre approche qui d\'emontre l'am\'elioration apport\'ee par SOMAD en terme de pr\'ecision (8.3\% \`a 20\%) et de vitesse (2.5 fois plus rapide).
+\item Une \'evolution de l'algorithme \textit{RuleGrowth} visant la fouille de r\`egles d'association s\'equentielles dans des s\'equences d'appels des SBSs.
+De ce fait, nous am\'eliorons la d\'etection d'anti-patrons SOA.
+\end{enumerate}
+
+Les contributions 1 et 2 ont \'et\'e pr\'esent\'ees \`a la $20^{ieme}$ \'edition de la conf\'erence internationale de travail sur la r\'etro-ing\'enierie (WCRE 2013, \textit{Working Conference on Reverse Engineering}) \citep{Nayrolles2013a}.
+
+\section*{Structure du document}
+
+Ce m\'emoire est organis\'e de la mani\`ere suivante. Les deux premiers chapitres pr\'esentent respectivement l'\'etat de l'art sur la d\'etection de patrons de conceptions et l'extraction de connaissances depuis les traces d'ex\'ecution.
+Le troisi\'eme chapitre, quant \`a lui, pr\'esente l'approche SOMAD.
+Le quatri\'eme pr\'esente l'impl\'ementation de \textsc{Somad} tandis que le cinqui\`eme et dernier chapitre pr\'esente nos exp\'erimentations. Enfin, nous proposons quelques remarques de fin dans la conclusion.
+
+\end{introduction}

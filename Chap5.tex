@@ -1,0 +1,409 @@
+\chapter{Expérimentations et validation}
+\label{exp}
+Afin de valider notre approche, nous avons appliqué SOMAD sur deux systèmes à base de services développés indépendamment, \textit{HomeAutomation} et \textit{FraSCAti} \citep{Seinturier2012}.
+\textit{HomeAutomation} est composé de 13 services tandis que FraSCAti est 10 fois plus important: 91 composants et 130 services.
+Nous avons choisi d'expérimenter notre approche sur ces systèmes car ce sont ceux qui ont permis de valider SODA --- l'approche préliminaire --- et nous allons de ce fait, pouvoir comparer les deux approches en termes de précision et de rappel d'un coté, et d'efficacité de l'autre.
+
+Dans ce chapitre nous présenterons les hypothèses qui nous ont servi à valider nos expérimentations, puis nous présenterons en détail nos sujets d'expérimentation.
+Enfin, nous présenterons notre mode opératoire ainsi que nos résultats.
+
+\section{Hypothèses}
+
+Les expérimentations visent à valider les trois hypothèses suivantes:
+
+\begin{hypothesis}
+\textbf{Précision.} Les algorithmes de détection doivent avoir un rappel de 100\%, c'est-\`a-dire, que tous les anti-patrons présents sont détectés, et une précision supérieure à 75\%, c'est-\`a-dire, que parmi les anti-patrons détectés, plus des trois-quarts sont de vrais positifs.
+\end{hypothesis}
+
+Cette première hypothèse supporte l'exactitude des règles d'association séquentielles générées ainsi que leur interprétation via nos métriques.
+De plus, cette hypothèse est similaire à celle qui ont permis de valider SODA car nous souhaitons que SOMAD soit, au minimum, aussi précis que SODA.
+
+\begin{hypothesis}
+\textbf{Performance.} Le temps d'exécution requis par les algorithmes de détection sont aussi bas que ceux de SODA, c'est-\`a-dire, en dessous d'une seconde.
+
+\end{hypothesis}
+
+Cette deuxième hypothèse supporte la performance de SOMAD par rapport à SODA en termes de temps d'exécution. 
+Ce choix d'une seconde est une approximation grossière de ce qui peut être considéré comme non-intrusif en termes de temps d'attente pour un utilisateur souhaitant améliorer la qualité de son système à base de services via la détection d'anti-patrons. 
+Dans un futur proche, nous souhaiterions pouvoir intégrer la détection d'anti-patrons pendant le développement des applications en analysant les traces produites à chaque compilation \& lancement. 
+De ce fait, 1 seconde nous paraît être acceptable.
+
+\begin{hypothesis}
+\textbf{Extensibilité.} SOMAD est extensible dans le sens où on peut lui ajouter de nouveaux anti-patrons et les détecter.
+\end{hypothesis}
+
+Avec cette dernière hypothèse à valider par nos expérimentations, nous voulons montrer combien il est aisé d'ajouter ou de combiner des métriques afin de détecter de nouveaux anti-patrons.
+
+\section{Sujets}
+Nous avons appliqué SOMAD pour détecter six anti-patrons SOA décrits dans le tableau \ref{tab:List-of-SOA}.
+Dans la description de chaque anti-patron, nous avons mis en gras les caractéristiques importantes pour leurs détections via nos métriques des tableaux~\ref{MetricsS} et \ref{MetriquesC}.
+
+\section{Objets}
+Une première passe d'expérimentation a été réalisée sur \textit{HomeAutomation}.
+\textit{HomeAutomation} est une application de type SCA développée indépendamment pour le contrôle domotique de maisons de personnes âgées (température, instruments électriques, urgences médicales).
+Cette application inclut 7 scénarios prédéfinis à des fins de tests et de démonstration.
+Deux versions différentes du système ont été utilisées: la version originale avec 13 services et une version dégradée intentionnellement dans laquelle des services ont été modifiés et d'autres ajoutés afin d'injecter de  nouveaux anti-patrons SOA.
+Ces changements ont été réalisés par une tierce partie afin d'éviter de biaiser les résultats.
+La figure \ref{fig:HA} présente l'architecture d'\textit{HomeAutomation} tandis que la figure \ref{fig:HMA} présente son interface graphique.
+
+\begin{figure*}
+
+\includegraphics[scale=0.35]{media/Home-Automation.png}%
+
+\caption{\label{fig:HA}Diagramme SCA d'\textit{HomeAutomation}.}
+\end{figure*}
+
+\begin{figure*}
+\begin{center}
+\includegraphics[scale=0.35]{media/HMA.png}%
+\end{center}
+\caption{\label{fig:HMA}Interface graphique d'\textit{HomeAutomation}.}
+\end{figure*}
+
+\'Etant donné le manque de systèmes à base de services disponibles gratuitement, la seconde passe d'expérimentation a été réalisée sur le support d'exécution d'\textit{Home\-Automation}: \textit{FraSCAti} \citep{Seinturier2012}.
+\textit{FraSCAti} est aussi un système de type SCA composé de 91 composants et 130 services.
+Les services sont distribués dans les composants et un composant expose au moins un service.
+Contrairement à \textit{HomeAutomation}, \textit{FraSCAti} ne possède pas de scénarios prédéfinis --- en réalité, il comporte quelques tests unitaires, mais pas de couverture complète des fonctionnalités.
+La détection a été effectuée en instrumentalisant \textit{FraSCAti} afin qu'il produise des traces d'exécution tel que décrit dans le chapitre précedent.
+Comme \textit{FraSCAti} est un environnement d'exécution pour les systèmes SOA, nous avons chargé et lancé des systèmes de diverses technologies (SCA, REST, Web-Service, RMI) dans \textit{FraSCAti}; puis nous avons utilisé ces systèmes dans le but de couvrir un maximum de fonctionnalités de \textit{FraSCAti}.
+
+
+La figure \ref{fig:FRA} présente l'architecture de FraSCAti tandis que la figure \ref{fig:FSCRIPT} présente l'interface graphique de l'explorateur de service.
+
+\begin{figure*}
+
+\includegraphics[scale=0.45]{media/FraSCAti.png}%
+
+\caption{\label{fig:FRA}Diagramme SCA principal de \textit{FraSCAti}.}
+\end{figure*}
+
+\begin{figure*}
+\begin{center}
+\includegraphics[scale=0.45]{media/fscript-console.png}%
+\end{center}
+\caption{\label{fig:FSCRIPT}Interface graphique de l'explorer \textit{FraSCAti}.}
+\end{figure*}
+
+La détection d'anti-patrons SOA sur \textit{FraSCAti} a été effectuée au niveau des composants plutôt qu'à celui des services à cause de sa documentation.
+En effet, \textit{FraSCAti} est documenté au niveau des composants et c'est cette documentation qui sera utilisée pour la validation des résultats.
+De plus, nous avons empiriquement prouvé que les systèmes SCA souffrent des mêmes maux architecturaux que les systèmes SOA purs.
+
+
+D'autres détails sur les systèmes analysés peuvent être trouvés en ligne: 
+
+\begin{itemize}
+\item \url{http://sofa.uqam.ca/somad}
+\item \url{http://frascati.ow2.org/doc/1.4/ch12s04.html}
+\end{itemize}
+
+Le tableau \ref{Objects: Two Versions of Home-Automation} présente un comparatif entre \textit{HomeAutomation} et \textit{FraSCAti} en termes de taille, nombre de services, nombre de méthodes et nombre de classes.
+
+\begin{table}[h!]
+\centering
+\scriptsize
+\begin{tabular}{|l|c|c|c|c|c|}
+\hline
+Application & Version & Taille & NDS & NDM & NDC \\
+\hline
+\hline
+Home Automation & original & 3.2 MLDC & 13 & 226 & 48 \\
+Home Automation & dégradée & 3.4 MLDC & 16 & 243 & 52 \\
+FraSCAti & original & 26.75 MLDC & 130 & 1882 & 403 \\
+\hline
+\end{tabular}
+\caption{Propriétés d' \textit{Home-Automation} et \textit{FraSCAti} (NDS: Nombre De Services, NDM: Nombre de Méthodes, NDC: Nombre de classe, MLDC: Milliers de lignes de code).}
+\scriptsize{\label{Objects: Two Versions of Home-Automation} }
+\end{table}
+
+\section{\green{Matériel et langage}}
+
+Les expérimentations ont été menées sur un poste avec les caractéristiques suivantes:
+
+\begin{itemize}
+\item Ubuntu Release 12.04 (precise) 64-bit
+\item Kernel Linux 3.5.0-36-generic
+\item Mémoire vive: 5.8 GB
+\item Processeur : 2x Intel Xeon(R) CPU E5345 @ 2.33GHz x 4
+\end{itemize}
+
+Le langage de programmation choisi pour l'implémentation de SOMAD est Java :
+
+\begin{itemize}
+\item Version: 1.6.0\_27.
+\item Machine Virtuelle: OpenJDK 64-Bit Server VM (build 20.0-b12, mixed mode).
+\end{itemize}
+
+
+
+\section{\green{L'outil \textsc{Somad}}}
+
+\green{Nous avons développé l'outil \textsc{Somad} en adéquation avec l'approche du même nom.
+\textsc{Somad} a quatre fonctionnalités principales:}
+
+\begin{itemize}
+\item La spécification d'anti-patrons SOA en utilisant les métriques de notre catalogue
+\item La détection automatique d'antipatrons dans les SOAs
+\item La visualisation du système cible
+\end{itemize}
+
+\green{La figure \ref{guiSomad} présente l'interface graphique de \textsc{Somad}.
+On y constate une visualisation des services présents sous forme de noeuds ainsi que les communications entre les services sous forme d'arêtes.
+Les services (noeuds) colorés en rouge signifient que le service est impliqué dans un anti-patron.
+L'outil affiche aussi la pile d'appel sur le panneau de gauche.}
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.39]{media/GUI-SOMAD.png}
+\caption{Interface de l'outil \textsc{Somad}.\label{guiSomad}}
+\end{center}
+\end{figure}
+
+\green{De plus une autre fonctionnalité prometteuse est actuellement en cours de développement.
+Cette fonctionnalité consiste à ajouter de nouveaux services en utilisant leur définition (comme, par exemple, un WSDL), puis nous recalculons la détection des anti-patrons SOA en considérant ces ajouts.
+Une vidéo de l'outil \textsc{Somad} (en anglais) est disponible sur notre site institutionnel: \url{http://sofa.uqam.ca/somad/}.}
+
+\section{\green{Processus}}
+
+
+
+Nous avons appliqué SOMAD pour la détection de six anti-patrons SOA sur deux systèmes distincts.
+Tout d'abord, nous avons lancé les sept scénarios d'\textit{Home\-Automation}:
+
+\begin{itemize}
+\item Détection de la chute d'un patient et envoi d'un message d'urgence au médecin contenant l'adresse du patient (Services impliqués: \texttt{SunSpot Service}, \texttt{Communication Service}, \texttt{Mediator}).
+
+\item Identique au scénario 1 mais planifie aussi un rendez-vous entre le patient et le médecin à une date ultérieure (Services impliqués: \texttt{SunSpot Service}, \texttt{Communication Service},\texttt{ Calendar Service}, \texttt{Mediator}).
+
+\item Ajout d'un rendez-vous dans l'agenda du docteur (Services impliqués: \texttt{Communication Service}, \texttt{Calendar Service}, \texttt{Mediator}).
+
+\item Contrôle des fenêtres et transfert de la responsabilité du patient à une infirmière ou un technicien (Services impliqués: \texttt{RFID Service}, \texttt{Mediator}).
+
+\item Contrôle des lumières dans la maison (Services impliqués: \texttt{RFID Service}, \texttt{Mediator}, \texttt{Communication Service}).
+
+\item Contrôle des lumières et des fenêtres (Services impliqués: \texttt{KNX Service}, \texttt{Mediator}).
+
+\end{itemize}
+
+Ensuite, nous avons chargé, lancé et utilisé cinq systèmes différents dans \textit{FraSCAti}:
+
+\begin{itemize}
+\item Une calculatrice basée sur des services web.
+\item Un chat utilisant le Java RMI\footnote{\textit{Remote Method Invocation}, plus connu sous l'acronyme RMI est une interface de programmation (API) pour le langage Java qui permet d'appeler des méthodes distantes}.
+\item Une implémentation de la suite de Fibonacci basée sur des services REST
+\item Une application de vente utilisant trois composants SCA dont un écrit en BPEL\footnote{En informatique, Business Process Execution Language, est un langage de programmation destiné à l'exécution des processus d'affaires.}
+\item Une application de météo consommant des services web distants
+\end{itemize}
+
+Une fois les traces générées, nous les avons réunies au sein d'un fichier distinct par application et extrait les transactions.
+Sur ces transactions, nous avons appliqué les algorithmes de fouille de règles d'association séquentielles avec un support minimum de 40\% et une confiance minimum de 60\%.
+ Ces choix ne suivent pas d'indications spécifiques liées à l'ARM (\textit{Association Rule Mining}) ou intuitions particulières sur nos sujets d'expérimentations.
+ En effet, nous étions seulement guidés par le besoin de filtrer toutes les règles non pertinentes tout en gardant assez de règles pour représenter la majorité des appels.
+De plus, nous avions besoin d'un minimum de confiance élevée pour faire apparaître les alternatives les plus probables (conséquent) pour chaque conclusion de transaction (antécédent) tout en supprimant les moins significatives.
+De ce fait, nous avons réalisé plusieurs essais pour les deux seuils et observé la taille de l'ensemble de règles.
+\green{Afin de déterminer quels étaient les meilleurs seuils, nous avons réalisé des essais incrémentaux en partant de 10\% et 40\%, respectivement pour le support et la confiance.
+Pour chaque essai, nous avons augmenté la valeur d'une des variables de 5\% et observé la taille du résultat.
+Les valeurs actuelles semblent apporter le meilleur compromis entre la taille de l'ensemble de règles et la pertinence des règles.
+} 
+
+L'étape suivante consiste en l'interprétation des règles d'association séquentielles générées.
+Dans ce but, nous avons appliqué nos métriques qui correspondent aux hypothèses basées sur les descriptions textuelles  des anti-patrons.
+Enfin, nous avons validé les résultats en termes de précision et de rappel en analysant manuellement les systèmes.
+La précision (Equation \ref{precision}) estime le ratio de vrais positifs dans les services suspects.
+Le rappel (Equation \ref{recall}), quant à lui, estime le ratio d'anti-patrons détectés sur le total d'anti-patrons présents dans l'application.
+
+\begin{equation}\label{precision}
+\textit{précision} = \frac{|\{\textit{anti-patrons}\;\textit{existants}\} \cap \{\textit{anti-patrons}\;\textit{détectés}\}|}{|\{\textit{anti-patrons}\;\textit{détectés}\}|}
+\end{equation}
+
+\begin{equation}\label{recall}
+\textit{rappel} = \frac{|\{\textit{anti-patrons}\;\textit{existants}\} \cap \{\textit{anti-patrons}\;\textit{détectés}\}|}{|\{\textit{anti-patrons}\;\textit{existants}\}|}
+\end{equation}
+
+Nous avons aussi évalué nos performances grâce à la mesure $F_{1}$ (Equation \ref{measure}), qui est une moyenne pondérée de la précision et du rappel pour mesurer l'exactitude de nos algorithmes de détection.
+
+\begin{equation}\label{measure}
+\textit{Mesure F$_{1}$} = 2 \times \frac{\textit{précision} \times \textit{rappel}}{\textit{précision} + \textit{rappel}}
+\end{equation}
+
+Cette validation a été réalisée manuellement par deux ingénieurs logiciels indépendants, à qui nous avons fourni les descriptions des anti-patrons, les deux versions d'\textit{HomeAutomation} et le détail des composants de \textit{FraSCAti}.
+Pour les deux systèmes, les résultats ont été comparés à ceux de SODA.
+Pour \textit{FraSCAti}, nous avons rapporté notre détection à l'équipe en charge de son développement et obtenu une validation objective de leur part.
+
+
+\section{Résultats}
+
+Le tableau \ref{tab:Results-comparison-between} présente les résultats de la détection des six anti-patrons SOA sur \textit{HomeAutomation}.
+Pour chaque anti-patron, le tableau contient les services détectés  automatiquement par SOMAD, les services identifiés manuellement, les valeurs des métriques, le rappel et la précision, le temps de détection, et finalement  la mesure $F_{1}$.
+De la même manière, le tableau \ref{tab:Results-comparison-between-1} rapporte les résultats de la détection sur \textit{FraSCAti}.
+Nous rappelons que les valeurs des métriques ne reflètent pas les valeurs réelles des services (par exemple, le nombre de méthodes), mais une représentation de la façon dont le système est utilisé (via les traces d'exécution).
+De plus, les valeurs des métriques sont pondérées par la fraction $\frac{support}{confiance}$ dans le but d'accentuer le poids des règles d'association séquentielles qui disposent de la plus grande confiance.
+De ce fait, un nombre de méthodes égal à 2 veut dire que parmi les règles d'association séquentielles générées, il y a 2 méthodes qui appara\^issent dans des règles disposant d'un fort support et d'une forte confiance.
+
+\green{Le temps requis moyen est de 174ms pour SOMAD et de 469ms pour SODA.
+Ceci est dû principalement au fait que SODA utilise la programmation orientée aspects (AOP, Aspect Oriented Programming) pour attacher le code des métriques sur chaque méthode de chaque service découvert.
+De plus, les métriques sont attachées une par une, par conséquent, l'exécution du SOA sous analyse est interrompue autant de fois qu'il y a de métriques à calculer, et ce à chaque invocation de méthodes.
+Au contraire, SOMAD n'interrompt pas l'application et n'est pas basé sur l'AOP, ainsi il offre de bien meilleures performances.}
+
+\begin{table*}
+\includegraphics[scale=0.51]{media/HomeAutomationResults.png}%
+ \caption{Comparaison des résultats de SOMAD et SODA sur \textit{HomeAutomation}\label{tab:Results-comparison-between}. Les services barrés indiquent des faux-positifs détectés par \textit{RuleGrowth} et pas par \textit{SOARuleGrowth}.}
+\end{table*}
+
+
+\begin{table*}
+\includegraphics[scale=0.51]{media/FraSCAtiResults.png}%
+\caption{Comparaison des résultats de SOMAD et SODA sur \textit{FraSCAti}.\label{tab:Results-comparison-between-1}}
+\end{table*}
+
+\section{Détails des résultats}
+
+Nous présentons les résultats de détection de SOMAD tout en les comparants à SODA, sur \textit{HomeAutomation} et \textit{FraSCAti}.
+Les résultats sont similaires, mis à part pour le \textit{Knot} et le \textit{BottleNeck}.
+
+
+\subsection{\textit{HomeAutomation}}
+
+\texttt{IMediator} a été détecté et identifié comme un \textit{Multi Service} par SODA et SOMAD, à cause de son grand nombre de méthodes (\textit{\textbf{N}umber of \textbf{M}ethods} $\geq$ 2), son grand nombre d'apparitions dans les règles (\textit{\textbf{N}umber of \textbf{MA}tches} $\geq$ 3.8) et sa faible cohésion (\textit{\textbf{COH}} $\leq$ 0.5).
+Les valeurs de ces métriques on été évaluées hautes et faibles en comparaison avec les scores obtenus par les autres services d'\textit{HomeAutomation}.
+En effet, la technique de la boite à moustache (Boxplot en anglais) estime qu'un score $\geq$ 2 pour la métrique \textbf{NM} est fort dans la distribution statistique des valeurs obtenues par les autres services.
+De la même manière, les services détectés comme \textit{Tiny Service} ont un petit nombre de méthodes (\textbf{NM} $\leq$ 2) et un fort couplage sortant (\textit{\textbf{O}utgoing \textbf{C}oupling} $\geq$ 4), à nouveau en accord avec la boite à moustache.
+Dans la version originale d'\textit{HomeAutmation}, nous n'avons pas détecté de \textit{Tiny Service}.
+Dans le but d'éprouver nos algorithmes de detection, un ingénieur indépendant a injecter cet anti-patrons.
+En effet, il a extrait une méthode du service \texttt{IMediator} et l'a déplacée dans un service nommé \texttt{MediatorDelegate}; ce nouveau service a été détecté comme \textit{Tiny Service}.
+Deux occurrences  du \textit{Chatty Service} ont été découvertes dans \textit{HomeAutomation} par SODA et SOMAD.
+\texttt{PatienDAO} et \texttt{IMediator} apparaissent un grand nombre de fois dans les règles (\textbf{NMA} $\geq$ 3.8) --- ce qui signifie qu'ils communiquent avec beaucoup d'autres services --- et ils ont un grand nombre de partenaires différents (\textbf{N}umber of \textbf{D}ifferent \textbf{P}artners $\geq$ 0.6).
+
+\texttt{PatientDAO} a été détecté comme un \textit{Knot} car il une forte dépendance cyclique d'invocation (\textit{\textbf{C}ross \textbf{I}nvocation \textbf{D}ependencies} $\geq$ 2).
+Dans \textit{HomeAutomation}, un ensemble de services \texttt{PatientDAO1}, \texttt{PatientDAO2}, \texttt{PatientDAO3} et \texttt{PatientDAO4} sont fortement couplés car chacun d'entre eux représente une partie des informations d'un patient (nom, adresse, numéro de téléphone, numéro de téléphone du docteur).
+De ce fait, des invocations cycliques systématiques entre ces services apparaissent quand le système souhaite accéder aux informations complètes du patient.
+SOMAD n'a pas détecté le faux positif \texttt{IMediator} détecté par SODA, et de ce fait, obtient une meilleure précision pour cet anti-patron.
+
+Deux services ont été détectés comme étant des \textit{BottleNeck}: \texttt{IMediator} et \texttt{Patient\-DAO} à cause de leur fort couplage entrant (\textbf{OC} $\geq$ 3) et sortant (\textit{\textbf{I}ncoming \- \textbf{C}oupling}~$\geq$~4).
+
+
+Finalement, SODA et SOMAD ont détecté une chaîne  d'invocations transitives ou \textit{Service Chain}: \texttt{IMediator} $\rightarrow$ \texttt{PatientDAO} $\rightarrow$ \texttt{PatientDAO2} $\rightarrow$ \texttt{SunSpotService} (\textbf{TC} $\geq$ 4).
+Les deux approches rapportent le faux positif \texttt{SunSpotService}.
+
+\subsection{\textit{FraSCAti}}
+
+Nous présentons maintenant les résultats des détections effectuées sur \textit{FraSCAti}.
+
+\texttt{SCA-Parser} est suspecté d'être un \textit{Tiny Service} car il a un faible nombre de méthodes (\textbf{NM} $\leq$ 1) et un fort couplage sortant (\textbf{OC} $\geq$ 3).
+Une inspection manuelle du code de \textit{FraSCAti} a révélé que le service \texttt{SCA-Parser} ne contient qu'une seule méthode nommée \texttt{parse}.
+L'équipe de développement de \textit{FraSCAti} a validé cette détection.
+Ils ont indiqué que ce service peut être utilisé seul uniquement quand la lecture d'un fichier SCA est demandée.
+Cependant, \textit{FraSCAti} permet d'effectuer un grand nombre de tâches qui auront besoin  de \texttt{SCA-Parser}.
+Ces autres tâches sont déléguées à d'autres services tels que \texttt{AssemblyFactory}.
+Ceci explique le fort couplage sortant.
+ 
+
+SOMAD n'a pas détecté de \textit{Multi Service} dans \textit{FraSCAti}.
+Cependant, l'inspection manuelle a révélé que le composant \texttt{Explorer-GUI} en est une occurence.
+L'équipe de développement de \textit{FraSCAti} a validé que ce composant utilise un grand nombre d'autres services fournis par d'autres composants.
+En effet, ce composant encapsule l'interface graphique de l'explorateur \textit{FraSCAti} qui fournit une interface exhaustive de toutes les fonctionnalités offertes par \textit{FraSCAti}.
+SOMAD n'a pas été capable de le détecter car le processus d'expérimentation n'implique, à aucun moment, l'interface graphique.
+
+SOMAD n'a pas détecté de \textit{Chatty Service}.
+En effet, aucun service ne dispose de nombreuses apparitions dans les règles (\textbf{NMA}) et d'un grand nombre de partenaires différents (\textbf{NDP}), respectivement supérieurs à 70 et 24 qui représentent les seuils minimaux pour être considéré comme haut par la boite à moustache.
+Cela signifie qu'aucun service n'apparait plus de 70 fois dans les règles et ne communique avec plus de 24 autres services.
+L'inspection manuelle de \textit{FraSCAti} n'a pas permis d'identifier un tel anti-patron.
+Nous avons exclus les résultats pour le \textit{chatty service} du calcul des moyennes. En effet, nous savons que SOMAD ne détecte pas de faux positifs sur cet anti-patron, mais nous ne pouvons pas être sûr que SOMAD détecterai un vrai positif s'il en rencontrai un dans \textit{FraSCAti}.
+
+Le composant \texttt{Metamodel-Provider} est suspecté de faire partie d'un \textit{Knot} car il a une faible cohésion (\textbf{COH} $\leq$ 0.2) et un nombre important de dépendances cycliques (\textbf{CID} $\geq$ 25).
+La validation par l'équipe de développement de \textit{FraSCAti} confirme que ce composant est au centre de large flux de communications multidirectionnelles, mais ils ne sont pas d'accord sur la spécification de cet anti-patron particulier.
+
+SOMAD a aussi détecté trois occurrences de \textit{BottleNeck}: \texttt{SCA-Parser}, \texttt{Composite\-Parser} et \texttt{Metamodel-provider}.
+Toutefois, le dernier des trois est un faux positif.
+Ces services ont été identifiés comme \textit{BottleNeck} car ils disposent d'un fort couplage sortant et entrant, tous deux supérieur ou égal à 3.
+
+
+Finalement, le \texttt{Composite-Parser} (\textbf{TC} $\geq$ 4) a été détecté et identifié comme partie d'un \textit{Service Chain}, tandis que le \texttt{Composite\~-Manager} est un faux positif.
+L'équipe de développement de \textit{FraSCAti} a confirmé que le \texttt{Composite-Parser} utilisait une chaîne de délégation pour compléter son abstraction.
+
+
+Nous pouvons observer que le \texttt{Composite-Parser} et \texttt{SCA-Parser} sont des services suspects.
+Ces services sont très couplés avec d'autres services et, en particulier, ils font partie de longues chaînes d'invocations.
+La présence de tels anti-patrons dans ce système s'explique car il n'existe pas de manière de développer de parseur sans introduire un fort couplage et une forte transitivité.
+
+En conclusion, \textit{FraSCAti} obtient de bons résultats quant à la détection d'anti-patrons.
+Peu de services ont été détectés comme tels en comparaison du grand nombre de services/composants présents dans le système.
+
+\subsection{\green{Etude des faux positifs}}
+
+\green{Nous étudions maintenant les raisons qui ont menés à la détection de faux positifs dans \textit{HomeAutomation} et \textit{FraSCAti}}.
+
+\subsubsection{\green{\textbf{HomeAutomation}}}
+
+\green{Le seul faux positif dans \textit{HomeAutomation} concerne le \texttt{SunSpotService} en tant que \textit{Chain Service}.
+Étant donné que SODA détecte aussi ce faux positif, et après vérification des analyses manuelles, il semblerait que \texttt{SunSpotService} ne soit pas un faux positif, mais une erreur apportée par l'analyse manuelle.}
+
+
+\subsubsection{\green{\textbf{FraSCAti}}}
+
+\green{Le seul faux positif détecté par SOMAD sur \textit{FraSCAti} est le \texttt{Metamodel-Provider} en tant que \textit{BottleNeck}.
+Une caractéristique non négligeable pour identifier un \textit{BottlNeck} est son fort temps de réponse dû au fait qu'il est un goulot d'étranglement dans le système.
+Néanmoins, nous avons déployé tous les services de \textit{FraSCAti} en local lors de nos expérimentations et n'avions donc aucune information pertinente à tirer des temps de réponses des services --- compris entre 0.1s et 0.5s.
+Afin d'augmenter notre précision sur cet anti-patron, nous devrions considérer l'ajout d'une nouvelle métrique \textbf{RT} (\textit{Repsonse Time}) qui mesurerait le temps de réponse des services en utilisant les marqueurs temps des traces d'exécution.
+Cependant, cette métrique s'appliquerait directement sur les traces, et non sur les règles d'association, ce qui pose un problème de compatibilité d'informations.
+En effet, nous ne pourrions que difficilement associer un temps d'exécution précis à une partie de règle: il nous faudrait utiliser des moyennes, ce qui est sans aucun doute discutable.}
+
+
+\section{Discussion sur les hypothèses}
+
+Nous allons maintenant vérifier chacune de nos trois hypothèses posées précédemment en utilisant les résultats de la détection.
+
+
+\begin{hypothesis}
+\textbf{Précision.} Les algorithmes de détection doivent avoir un rappel de 100\%, c'est-\`a-dire, que tous les anti-patrons présents sont détectés, et une précision supérieure à 75\%, c'est-\`a-dire, que parmi les anti-patrons détectés, plus des trois-quarts sont de vrai positifs.
+\end{hypothesis}
+
+Comme indiqué dans les tableaux \ref{tab:Results-comparison-between} et \ref{tab:Results-comparison-between-1}, nous avons obtenu un rappel de 100\%, ce qui veut dire que tous les anti-patrons existants ont été détectés.
+La précision, quant à elle, est de 90.1\% pour \textit{Home-Automation} et de 93.3\% pour \textit{FraSCAti}.
+La précision est supérieure de 8.3\% à 20\% par rapport à SODA.
+Des écarts importants en faveur de SOMAD sont aussi à signaler au niveau de la mesure $F_{1}$.
+En effet, SOMAD a obtenu des valeurs de 97.6\% et 96.6\% pour \textit{Home-Automation} et \textit{FraSCAti}, respectivement.
+Ces valeurs sont supérieures à celle obtenues par SODA, d'une marge allant de 5.6\% à 11.9\%.
+
+
+Nous validons donc notre première hypothèse.
+De plus, SODA n'est capable d'analyser que des systèmes  SCA alors que SOMAD peut être utilisé sur des traces d'exécution provenant de toutes les technologies d'implémentation SOA.
+
+\begin{hypothesis}
+\textbf{Performance.} Le temps d'exécution requis par les algorithmes de détection sont aussi bas que ceux de SODA, c'est-\`a-dire, en dessous d'une seconde.
+
+\end{hypothesis}
+
+Les expérimentations ont été menées 10 fois, et nous avons reporté la moyenne des temps d'exécution pour chaque anti-patron.
+Pour tous les anti-patrons, les temps de détection sont largement en dessous de la seconde, et ce, quel que soit le système.
+En effet, ils sont compris entre 0.05s et 0.70s.
+La moyenne des temps d'exécution est de 0.17s pour SOMAD soit, 2.5 fois plus rapide que SODA.
+Cependant, dans SOMAD, les temps d'exécution comprennent l'analyse des traces d'exécution.
+De ce fait, le temps requis augmentera considérablement avec l'augmentation du nombre de traces d'exécution à analyser.
+En effet, plus de 80\% du temps actuel est dédié à la reconstruction des transactions et à la génération des règles d'association séquentielles.
+De plus, l'augmentation du temps d'exécution n'est pas linéaire: le facteur entre \textit{Home-Automation} et \textit{FraSCAti} est de 10, néanmoins, le temps d'exécution requis pour \textit{FraSCAti} est 12 fois supérieur à celui requis pour \textit{HomeAutomation}.
+Cependant, un système à base de services composé de 91 composants et 130 services est un système de grande ampleur, et les temps de détection sont inférieurs à 1s.
+Nous validons donc notre seconde hypothèse.
+
+\begin{hypothesis}
+\textbf{Extensibilité.} SOMAD est extensible dans le sens où on peut lui ajouter de nouveaux anti-patrons et les détecter.
+\end{hypothesis}
+
+La preuve de concept de SOMAD n'était constituée que de quatre métriques, basées sur deux hypothèses et visant la détection de trois anti-patrons.
+Cela nous a pris moins d'une demi-journée de travail pour ajouter chaque nouvelle métrique.
+Ainsi, nous validons notre troisième et dernière hypothèse.
+ 
+
+\section{Obstacles possibles à la validité}
+
+Le principal obstacle à la validation de nos résultats est la \textit{validation externe}, c'est-\`a-dire, la possibilité de généraliser nos résultats actuels à toutes les autres technologies SOA.
+\'Etant donné le manque de systèmes disponibles (gratuitement), nous avons fait de notre mieux pour obtenir des systèmes de taille réelle tels que \textit{FraSCAti} et nous avons mené nos expériences sur deux versions d'\textit{HomeAutomation}.
+Cependant, nous prévoyons d'effectuer des expérimentations sur des traces provenant d'autres systèmes tels que REST ou services web.
+
+Pour la \textit{validation interne}, les résultats de nos détections dépendent de nos hypothèses.
+Celles-ci semblent êtres pertinentes et validées car nous obtenons des résultats similaires et meilleurs à ceux de SODA.
+La \textit{validation interne} est donc maitrisée.
+
+La nature subjective de l'interprétation des règles d'association séquentielles et de la validation des anti-patrons est une menace à la \textit{validité de construction}.
+Nous avons contrôlé cette menace car nous avons spécifié nos hypothèses en nous aidant de la littérature des anti-patrons et en impliquant deux ingénieurs indépendants ainsi que l'équipe de développement de \textit{FraSCAti} dans notre étude.
+
+Finalement, nous avons minimisé la menace de \textit{fiabilité} en automatisant la génération des règles d'association séquentielles et les algorithmes de détection.

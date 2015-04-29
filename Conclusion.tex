@@ -1,0 +1,22 @@
+\begin{conclusion}
+\label{concl}
+
+La détection d'anti-patrons SOA est une activité cruciale pour assurer la qualité de conception des systèmes à base de services.
+Dans ce mémoire, nous avons présenté une approche innovatrice  nommée SOMAD pour la détection de tels anti-patrons.
+Cette approche repose sur deux techniques  complémentaires, venant de deux champs de recherche très actifs dans l'ingénierie des logiciels: la fouille dans les traces d'exécution et la surveillance informatique de systèmes, tous deux appliqués dans un environnement SOA.
+Plus précisément, SOMAD détecte les anti-patrons SOA en fouillant des règles d'association séquentielles en utilisant une adaptation de \textit{RuleGrowth} nommée \textit{SOARuleGrowth}.
+Ensuite, SOMAD filtre la connaissance que les règles d'association séquentielles contiennent à propos des relations entre les services en utilisant une suite de métriques dédiées.
+L'utilité de SOMAD a été démontrée en l'appliquant à deux systèmes à base de services développés indépendamment.
+Les résultats de cette approche incrémentée depuis SODA -- l'unique et par conséquent outil de l'état de l'art, afin de combler ses limitations -- ont été comparés à ceux de SODA et montrent que SOMAD obtient de meilleurs résultats.
+Sa précision est meilleure par une marge allant de 8.3\% à 20\% tout en gardant le rappel à 100\% et étant, au minimum, 2.5 fois plus rapide.
+De plus, SOMAD utilise les traces d'exécution comme données d'entrées, traces d'exécution qui peuvent provenir de n'importe quelles implémentations SOA.
+Au contraire, SODA était focalisé sur les systèmes à base de composants.
+
+Pour l'avenir, nous imaginons SOMAD dans le contexte d'un centre de données où son but serait d'optimiser les communications de ce dernier.
+Nous devrions aussi investiguer des techniques alternatives de génération de règles d'association séquentielles afin de raffiner notre approche avec de nouvelles informations, comme par exemple, la fouilles de graphe \citep{Chakrabarti2006} ou la détection de patrons récurrents d'anomalies comportementales en utilisant la fouille de patrons rares \citep{Szathmary2007}.
+Finalement, nous pourrions combiner des représentations sémantiques, c'est-à-dire, des ontologies OWL\footnote{\textit{Web Ontology Language} (OWL) est un langage de représentation des connaissances construit sur le modèle de données de RDF.
+Il fournit les moyens pour définir des ontologies web structurées.}, et des méthodes de fouille applicables aux graphes libellés hétérogènement \citep{Adda2010}.
+En effet, ce domaine semble particulièrement pertinent et prometteur pour nos recherches.
+
+\end{conclusion}
+

@@ -1,0 +1,19 @@
+\begin{abstract}
+Les systèmes à base de services (SBSs), à l'instar des autres systèmes complexes, évoluent pour s'adapter à des nouvelles demandes utilisateurs et à de nouveaux contextes d'exécution.
+Cette évolution continue peut facilement détériorer la qualité de service (QoS) et de conception des SBSs et introduire des défauts de conception, connus sous le nom d'anti-patrons SOA (\textit{Service Oriented Architecture}).
+Les anti-patrons de conception sont des solutions récurrentes et reconnues sous-optimums à des problèmes connus.
+Les anti-patrons sont donc l'inverse des patrons de conception qui sont de bonnes solutions à des problèmes connus.
+Les anti-patrons SOA conduisent à une maintenabilité et une réutilisabilité réduites des SBSs.
+Il est donc important de les détecter puis de les supprimer.
+Cependant, les techniques pour leur détection en sont à leurs balbutiements, et il n'y a actuellement qu'un seul outil, nommé SODA (\textit{Service Oriented Detection for Antipatterns}), permettant leur détecion automatique.
+SODA est basé sur un ensemble de métriques majoritairement statiques et sur quelques métriques dynamiques qui sont calculées lors de l'exécution du système cible grâce à des techniques de programmation orientée aspect.
+Dans ce mémoire, nous proposons une nouvelle approche nommée SOMAD (\textit{Service Oriented Mining for Antipatterns Detection}) qui est une évolution de SODA.
+Le but de notre nouvelle approche est d'améliorer la détection automatique des anti-patrons SOA en fouillant les traces d'exécution que produisent les SBSs.
+En effet, les traces d'exécution représentent plusieurs avantages qui permettront d'améliorer la détection car elles permettent de capturer pleinement la nature hautement dynamique des SBSs tout en nécessitant un niveau de contrôle relativement faible sur les systèmes cibles.
+SOMAD mine des règles d'association pertinentes dans les traces d'exécution des SBSs, puis les filtre via une suite de métriques dédiées.
+Nous discutons d'abord les modèles de règles d'association sous-jacents et les intuitions soutenant les métriques dédiées aux SBSs.
+Les règles d'association permettent de découvrir des relations entre différents objets dans un grand ensemble de données.
+Nous présentons aussi deux expérimentations visant la validation formelle de notre approche.
+Une comparaison entre SOMAD et SODA est effectuée et révèle l'efficacité de SOMAD face à SODA: sa précision est meilleure d'une marge allant de 8.3\% à 20\% tout en gardant le rappel à 100\%.
+Finalement, SOMAD est, au minimum, 2.5 fois plus rapide que SODA sur les mêmes sujets d'expérimentation.
+\end{abstract}

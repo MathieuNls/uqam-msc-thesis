@@ -1,0 +1,222 @@
+\chapter{\'Etat de l'art sur l'extraction de connaissances à partir de traces d'exécution}
+
+Les traces d'exécution sont à la base de la majorité des analyses dynamiques de systèmes complexes.
+Les traces d'exécution peuvent être collectées grâce à l'exécution normale -- en opposition à l'exécution contrôlée ou dirigée -- du système analysé.
+Cependant, les traces d'exécution sont réputées être difficiles à appréhender à cause de la quantité considérable de données qu'elles contiennent.
+En effet, l'exécution d'un système de taille moyenne peut potentiellement produire des millions de traces, chacune étant une composition d'information telle que l'horodatage (\textit{timestamp} en anglais), l'identification du client ou du sous-système courant.
+Au fil des années, des techniques du domaine de la fouille de données ont été  appliquées aux traces d'exécution afin d'en extraire des informations intérèssantes.
+
+Dans ce chapitre couvrant l'état de l'art de l'extraction de connaissances à partir de traces d'exécution, nous allons, dans un premier temps, faire une revue des travaux portant sur l'extraction de connaissances dans des environnements orientés services.
+Dans un second temps, nous introduirons les notions de fouille de règles d'association classiques et séquentielles.
+
+\section{Extraction de connaissances depuis des traces d'exécution}
+
+Un nombre important d'études se sont concentrées sur l'extraction des connaissances contenues dans les traces d'exécution.
+Ces études ont étés motivées par l'identification d'aspects \citep{Tonella}, de processus d'affaires \citep{Khan2010}, de patrons d'utilisation de services \citep{Asbagh2007}, et l'identification de fonctionnalités à la fois dans les systèmes orientés objets \citep{Dustar2006} et services \citep{Safyallah2006}.
+ Tonella et Cecetato (2004) ont identifié les aspects en générant des traces  liées à l'exécution des principales fonctionnalités d'un système.
+ Ensuite, ces traces d'exécution sont comparées aux unités du système qui ont été utilisées --- ce qui induit un contrôle sur le code source --- via l'analyse formelle de concepts.
+Le treillis résultant permet de détecter les différents aspects de l'application  \citep{Tonella}.
+Khan \textit{et al.} (2010) fouillent les processus d'affaires dans un environnement SOA en identifiant les traces relatives à un processus.
+Ces traces appelées "traces de processus" sont ensuite soumises à de nombreuses conversions et analyses sémantiques afin d'en retirer les différents processus d'affaires \citep{Khan2010}.
+\citet{Asbagh2007} fouillent des patrons d'exécution séquentiels dans les séquences d'utilisation de services dans le but d'en extraire des patrons d'utilisation généraux et proposent un algorithme performant pour cette tâche spécifique.
+
+Une étude particulièrement importante, car proche de notre approche, porte sur l'identification de composition de services \citep{Upadhyaya2012a}, c'est-\`a-dire, des services qui sont utilisés ensemble de façon répétée tout en étant structurellement et fonctionnellement similaires.
+ Les auteurs détectent neuf compositions de services en utilisant l'analyse de traces d'exécution et l'algorithme Apriori (voir section \ref{apriori}) pour les détecter.
+ Ils identifient aussi les patrons de composition qui sont structurellement ou fonctionnellement proches afin de les représenter à un niveau d'abstraction supérieur.
+
+Un petit nombre de projets ont exploré la détection de patrons de conception basée sur la fouille de traces.
+\citet{Ng2010} ont proposé MoDeC, une approche pour identifier des patrons de conception comportementaux et de création en utilisant une analyse dynamique et de la programmation par contraintes.
+Ils ont réalisé une rétro-ingénierie des scénarios d'utilisation en instrumentant le \textit{bytecode}\footnote{Le \textit{bytecode} est un code intermédiaire, plus concret (plus proche des instructions machines) que le code source, qui n'est pas directement exécutable.
+Il est contenu dans un fichier binaire qui représente un programme, tout comme un fichier objet produit par un compilateur.} et ont appliqué des techniques de programmation par contraintes pour détecter des patrons de collaboration à l'exécution.
+\citet{Hu2008} se sont attaqués à la détection de patrons de conception dans les traces d'exécution en utilisant des scénarios, de la fouille de patrons et de l'analyse formelle de concepts.
+Leur approche est guidée par un ensemble de scénarios uniques par fonctionnalité de l'application afin d'identifier des patrons par fonctionnalité.
+
+
+Bien que différentes dans leurs buts et étendues, les études présentées ci-dessus portant sur des anti-patrons et patrons orientés objets forment une base d'expertise  et de savoir technique pour créer de nouvelles méthodes visant la détection d'anti-patrons SOA.
+Malgré le nombre important de ressemblances, les techniques de détection pour les anti-patrons objets ne peuvent pas être directement appliquées pour les services.
+En effet, les systèmes orientés services utilisent les services comme bloc de construction et, de ce fait, se placent à une abstraction supérieure à l'objet.
+De plus, la nature hautement dynamique et distribuée des systèmes à base de services soulève des défis qui ne sont pas prépondérants dans les systèmes objets.
+De manière générale, ces d\'efis sont liés à des difficultés à établir l'ordre des événements, tout comme le comportement stochastique dont de tels systèmes sont capables.
+De ce fait, les techniques établies pour le paradigme objet ne peuvent pas être appliquées.
+
+
+\section{Introduction à la fouille de règles d'association\label{ARM}}
+
+Dans le domaine de la fouille de données, la fouille de règles d'association (\textit{Association rule Mining}, ARM) est une méthode reconnue pour découvrir des co-occurrences entre les attributs d'objets dans des bases de données colossales \citep{Gregory1991}.
+Les règles d'association classiques sont représentées par $A \rightarrow B$, où A et B sont des ensembles d'attributs.
+En d'autre mots, la fouille de règles d'association cherche à extraire --- depuis un ensemble de transactions composées d'items --- les items qui apparaissent souvent ensemble (itemsets fréquents) et des règles antécédent $\rightarrow$ conséquent prédisant l'occurrence d'un item d'après les occurrences d'autre items dans la transaction (règles d'association).
+
+La force d'une règle est mesurée par une métrique de \textit{confiance}.
+La confiance mesure la fréquence de B dans les transactions ayant déjà A (Equation \ref{confidentce}).
+Dans cette équation  $\sigma (A \cup B)$ représente le nombre d'apparitions de A et B dans la même transaction et $\sigma (A)$ le nombre de transaction dans lesquelles A apparaît.
+
+\begin{equation}\label{confidentce}
+\textit{Confiance (A entraine B)} =  \frac{\sigma (A \cup B)}{\sigma (A)}
+\end{equation}
+
+L'importance de la règle, quant à elle, c'est-\`a-dire, combien de fois le motif correspondant appararaît dans les traces, est mesurée par le \textit{support} (Equation \ref{Support}).
+Dans cette seconde équation, la signification de $\sigma (A \cup B)$ est identique et $|T|$ est le nombre de transactions.
+
+\begin{equation}\label{Support}
+\textit{Support (A entraine B)} = \frac{\sigma (A \cup B)}{|T|}
+\end{equation}
+
+Pour s'assurer qu'uniquement les règles avec un fort potentiel d'information soient retenues, la fouille est encadrée par des seuils  minimaux à atteindre pour les deux métriques.
+
+\subsection{L'algorithme Apriori\label{apriori}}
+
+L'algorithme Apriori -- publié en 1994 -- est, probablement, l'algorithme le plus populaire pour extraire de telles règles d'association \citep{Agrawal1994}.
+Voici un aperçu de son mode opératoire.
+Pour chaque transaction ($t \in T$) du tableau~\ref{transaction}, nous prenons en compte chaque article acheté sans préoccupation de quantité.
+
+
+\begin{table}[h!]
+\centering
+\scriptsize
+\begin{tabular}{|c|c|}
+\hline
+Transaction & Items\\
+\hline
+\hline
+1 & Pain, Lait\\
+2 & Pain, Couche, Bière, Oeufs\\
+3 & Lait, Couche, Bière, Coke \\
+4 & Pain, Couche, Lait, Bière \\
+5 & Coke, Lait, Pain, Couche \\
+\hline
+\end{tabular}
+\caption{Table de transactions.\label{transaction}}
+\end{table}
+
+Ensuite, l'algorithme génère les ensembles d'items par taille et ce en
+fonction d'un support minimum. Ici le support $supp(x)  = \frac{\sigma (x)}{|T|}$ représente la fréquence d'apparition de l'itemset $(it)$ dans l'ensemble des transactions $(T)$.
+Le résultat de cette opération est présenté par le tableau \ref{itmf}.
+Par exemple, l'article \{Pain\} est présent dans quatre des cinq transactions.
+Il a donc un support de 80\%.
+Les itemssets fréquents peuvent aussi être composés de plusieurs articles; par exemple ``Bière'' et ``Couche'' apparaissent dans trois des cinq transactions donc \{Bière, Couche\} a un support de 60\%.
+
+\begin{table}[h!]
+\centering
+\scriptsize
+\begin{tabular}{|c|c|c|}
+\hline
+Itemsets fréquents & Support\\
+\hline
+\hline
+\{Pain\} & 80\% \\
+\{Lait\} & 80\% \\
+\{Couche\} & 80\% \\
+\{Bière\} & 60\% \\
+\{Pain, Lait\} & 60\% \\
+\{Pain, Couche\} & 60\% \\
+\{Bière, Couche\} & 60\% \\
+\{Lait, Couche\} & 60\% \\
+\hline
+\end{tabular}
+\caption{Itemsets fréquents avec un support minimum de 50\%\label{itmf}.}
+\end{table}
+
+A partir de ces itemsets fréquents, l'algorithme génère les règles d'association, en suivant et
+en restreignant les résultats en fonction de certaines valeurs comme la confiance.
+Des exemples de règles d'association sont présentés par le tableau \ref{ar}.
+Si nous prenons l'itemset fréquent \{Bière, Couche\} qui dispose de 60\% de support (trois des cinq transactions), nous remarquons qu'il est aussi associé à l'article ``Lait'' dans deux des trois transactions.
+Nous pouvons donc écrire que \{Bière, Couche\} $\rightarrow$ \{Lait\} avec un support de 40\% car cette règle apparaît dans deux des cinq transactions et avec une confiance à 67\% car \{Bière, Couche\} apparaîssent trois fois mais ne sont accompagnés par \{Lait\} que deux fois.
+
+\begin{table}[h!]
+\centering
+\scriptsize
+\begin{tabular}{|c|c|c|}
+\hline
+Règles & Support & Confiance\\
+\hline
+\hline
+\{Lait,Couche\} $\rightarrow$ \{Bière\} & 40\% & 67\% \\
+\{Lait,Bière\} $\rightarrow$ \{Couche\} & 40\% & 100\% \\
+\{Bière, Couche\} $\rightarrow$ \{Lait\} & 40\% & 67\% \\
+\{Bière\} $\rightarrow$ \{Lait,Couche\} & 40\% & 67\%  \\
+\{Couche\} $\rightarrow$ \{Lait,Bière\} & 40\% & 50\% \\
+\{Lait\} $\rightarrow$ \{Couche,Bière\} & 40\% & 50\%\\
+\hline
+\end{tabular}
+\caption{Exemples de règles fouillées depuis le tableau \ref{itmf}\label{ar}.}
+\end{table}
+
+\section{Règles d'association séquentielles}
+
+ Bien que les règles d'association classiques aient pu nous apporter des informations pertinentes, nous sommes intéressés par la préservation des séquences d'invocation de services.
+ De ce fait, nous avons adopté une variante, ``\textit{les règles d'association séquentielles}'' dans laquelle, $ A $ et $B$ deviennent des séquences d'évènements (acheté par un même client, alarmes réseaux, ou tout autre sorte d'évènements généraux).
+ De plus, dans notre cas les séquences suivent un ordre temporel dans le sens où la partie gauche (antécédent) se produit avant la partie droite (conséquent).
+ Les règles qui peuvent être découvertes depuis les traces d'exécution mettent au premier plan des informations cruciales à propos de la chance de voir apparaître des services ensemble dans les traces d'exécution et dans un ordre spécifique.
+ Ainsi, une règle d'association séquentielle peut ressembler à :
+\begin{center}
+$ServiceA,~ServiceB~implique~ServiceC$ 
+\end{center}
+qui signifie qu'après l'exécution du service A suivi de celle du service B, il y a de bonnes chances de voir le service C apparaître.
+Dans un souci de clarté, nous avons limité la taille de l'antécédent et du conséquent, néanmoins, les deux côtés de la règle peuvent être des séquences de taille arbitraire.
+
+
+\subsection{L'algorithme RuleGrowth}
+
+\textit{RuleGrowth} est un algorithme récent --- publié en 2011 --- qui vise la découverte de règles d'association séquentielles dans de larges bases de données \citep{Fournier-viger2011}.
+Plus spécifiquement, RuleGrowth se focalise sur des séquences composées d'évènements ordonnés dans le temps.
+Cependant, les évènements peuvent aussi être regroupés en ensemble d'évènements.
+Dans ce cas ci, les évènements sont considérés comme simultanés.
+
+\begin{table}[h!]
+\centering
+\scriptsize
+\begin{tabular}{|c|c|}
+\hline
+ID & Items \\
+\hline
+\hline
+1 & \{Clean Code\},\{Refactoring\};\{Clean Coder\};\{Design Patterns, Refactoring to Patterns\}\\ \hline
+\multirow{3}{*}{2} & \{Clean Code, Clean Coder\};\{Refactoring, Design Patterns\};\{Head First DP\}\\
+& \{Head First DP, Refactoring to Patterns\};\{Clean Code, Refactoring\} \\ 
+& \{Clean Coder, Refactoring to Patterns\};\{Design Patterns\} \\ \hline
+\multirow{2}{*}{3} & \{Head First DP\};\{Patterns of Enterprise Apps\};\{Clean Code, Refactoring to Patterns\} \\ 
+& \{Refactoring\};\{Design Patterns\}\\ \hline
+\end{tabular}
+\caption{Base de données de séquences d'achat de livres\label{seq}.}
+\end{table}
+
+Dans le tableau \ref{seq}, nous pouvons observer trois séquences différentes composées d'ensembles d'évènements identifiés par des accolades et séparés par des virgules.
+Lorsque l'on souhaite prédire ce qui va se passer à la suite d'évènements, nous pouvons utiliser les règles d'association séquentielles qui, comme vu dans la section \ref{ARM}, sont de la forme $ A \rightarrow B$, signifiant que B a des chances de se produire après A.
+De telles règles ont été utilisées dans de nombreux domaines: l'analyse de cours boursier \citep{Yang2006} ou l'établissement de prévisions météorologiques \citep{Ho2005}.
+
+En utilisant les séquences du tableau \ref{seq}, RuleGrowth est capable d'extraire les règles présentées par le tableau \ref{rulesSample}.
+
+\begin{table}[h!]
+\centering
+\scriptsize
+\begin{tabular}{|c|}
+\hline
+Règles  \\
+\hline
+\hline
+Clean Code $\Rightarrow$ Refactoring \\
+Clean Code $\Rightarrow$ Refactoring, Design Patterns \\
+Clean Code $\Rightarrow$ Design Patterns \\
+Clean Code, Refactoring $\Rightarrow$ Design Patterns \\
+Clean Code, Refactoring,Clean Coder $\Rightarrow$ Design Patterns \\
+Clean Code, Refactoring,Head First DP $\Rightarrow$ Design Patterns \\
+Clean Code, Refactoring, Head First DP, Refactoring to Patterns \\
+Clean Code, Refactoring, Refactoring to Patterns $\Rightarrow$ Design Patterns \\
+Clean Code, Clean Coder $\Rightarrow$ Design Patterns \\
+Clean Code, Head First DP $\Rightarrow$ Design Patterns \\
+Clean Code, Head First DP, Refactoring to Patterns $\Rightarrow$ Design Patterns \\
+\hline
+\end{tabular}
+\caption{Exemples de règles d'association séquentielles.\label{rulesSample}}
+\end{table}
+
+RuleGrowth surclasse les autres algorithmes existants -- CMRules et CMDeo \citep{Fournier-Viger2012} -- car il utilise des techniques élaborées afin de générer beaucoup moins de candidats et, par conséquent, être plus performant.
+
+\section{Conclusion}
+
+De nombreuses études ont visé l'extraction de données interprétées depuis les traces d'exécution et certaines d'entre elles ont, avec succès, extrait toutes sortes de patrons pour représenter le système sous analyse.
+Nous avons proposé une introduction à un sous-domaine de la fouille de données --- dont l'étude des traces d'exécution dépend --- nommé la fouille de règles d'association et plus particulièrement la fouille de règles d'association séquentielles via deux algorithmes.
+La fouille de règles d'association classique ou non séquentielle dans les traces d'exécution générées par des systèmes à base de services a déjà été explorée par \citep{Upadhyaya2012a}.
+ Dans cette étude, les auteurs proposent une approche pour la découverte de patrons de composition.
+ Néanmoins, ils ne tiennent pas compte de l'ordonnancement des appels ce qui autorise la génération de plus de règles et en réduit donc leur pertinence.
+La technique de la fouille de règles d'association séquentielles sera utilisée dans notre approche décrite dans le chapitre suivant.

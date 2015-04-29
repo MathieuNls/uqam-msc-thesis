@@ -1,0 +1,511 @@
+\chapter{Implémentation de SOMAD}
+
+Dans ce chapitre, nous présentons l'implémentation qui supporte l'approche SOMAD.
+Nous présentons aussi les raisons techniques qui font en sorte que SOMAD a de meilleurs résultats que SODA, en termes de précision et performances.
+Nous allons tout d'abord étudier la génération des traces d'exécution puis leur collecte et agrégation.
+Enfin, nous nous attarderons sur l'identification des transactions dans ces traces et la modification de l'algorithme RuleGrowth pour l'adapter à nos besoins.
+
+\section{Génération de traces d'exécution} 
+Dans le cas où les traces ne sont pas disponibles, cette étape permet leur génération.
+Si le système à base de services cible ne produit pas de traces d'exécution qui contiennent toutes les informations requises, nous devons l'instrumentaliser dans ce but.
+De telles traces permettent de déboguer les applications quand des débogueurs ne sont pas disponibles ou applicables (souvent le cas dans les environnements SOA).
+La production de traces d'exécution peut, cependant, introduire de l'obfuscation\footnote{Le code impénétrable ou offusqué d'un programme informatique est un code dont la compréhension est difficile pour un humain tout en restant parfaitement compilable par un ordinateur.} de code.
+Néanmoins, elle peut aussi avoir des bénéfices au niveau de la compréhension de l'architecture car le code doit être parfaitement maîtrisé afin d'être instrumentalisé correctement.
+Cette technique de production de traces d'exécution est la plus commune.
+Cependant, si le code source n'est pas disponible, une autre technique consiste à instrumentaliser l'environnement d'exécution du système à base de services cible.
+Par exemple, LTTng \citep{Fournier2009} instrumentalise les systèmes de type Linux afin qu'ils produisent des traces d'exécution avec un faible sur-coût en termes de temps d'exécution.
+
+
+Pour faciliter le traitement automatique des traces d'exécution, nous avons imaginé un modèle (voir figure \ref{logs}) qui est un bon compromis entre simplicité et quantité d'informations.
+Dans ce modèle, une invocation de méthode génère deux lignes, une ligne d'ouverture et une ligne de fermeture avec l'identification d'un client correspondant à son @IP et un marqueur temporel (\textit{timestamp}).
+La présence de deux lignes est nécessaire pour identifier des appels à d'autres services avant la fin de la méthode.
+En effet, les traces contiendront une nouvelle ligne d'entrée dans une méthode avant la ligne de fermeture de la méthode initiatrice.
+
+\begin{figure}[h]
+\begin{center}
+\framebox{\begin{minipage}[t]{10cm}%
+IP timestamp void methodA.ServiceA();\\
+~~~~IP~~~~timestamp void methodB.ServiceB();\\
+~~~~IP~~~~timestamp end void methodB.ServiceB();\\
+IP timestamp end void methodA.ServiceA();
+\end{minipage}}
+\caption{Modèle de trace\label{logs}.}
+\end{center}
+\end{figure}
+
+Les systèmes à base de services contiennent souvent des sous-systèmes de génération de traces d'exécution.
+Cependant, ces systèmes déjà intégrés peuvent produire des traces très différentes de notre modèle.
+En conséquence, nous avons rendu SOMAD adaptable par un simple DSL (\textit{Domain Specific Language}) basé sur les expressions régulières (voir figure \ref{dsl-}).
+De ce fait, les informations peuvent être ordonnées différemment.
+
+\begin{figure}[h]
+\begin{center}
+\framebox{\begin{minipage}[t]{10cm}%
+time\{\textasciicircum\textbackslash w+\textbackslash s\textbackslash d\textbackslash d\textbackslash s\textbackslash :\textbackslash d\textbackslash d:\textbackslash d\textbackslash d.\textbackslash d+\} end\{end\}\\
+method\{\textasciicircum[\textasciicircum.]*.(.*)\$\}
+service\{\$[\textasciicircum.]*.(*.)\}\\
+customer\{\textbackslash b\textbackslash d\{1,3\}\textbackslash .\textbackslash d\{1,3\}\textbackslash .\textbackslash d\{1,3\}\textbackslash .\textbackslash d\{1, 3\}\textbackslash b\}\\
+line\{ *customer *time *(end)? *method.service *\}
+\end{minipage}}
+\caption{DSL associé au modèle de la figure \ref{logs} \label{dsl-}.}
+\end{center}
+\end{figure}
+
+\section{Collecte des traces d'exécution et agrégation} Le but ici est de télécharger les fichiers de traces là où elles se trouvent puis de les agréger dans un seul et même fichier.
+
+Les traces d'exécution sont générées par les services composant le système, puis elles sont collectées et agrégées.
+Cette étape est importante -- elle construit les données d'entrée de SOMAD -- et non triviale \citep{Wilde2008}.
+En effet, la nature hautement dynamique et distribuée des systèmes à base de services introduit deux défis distincts.
+Le premier est lié à la distribution des systèmes à base de services et, donc, des traces d'exécution.
+En effet, chaque service génère ses traces d'exécution dans son environnement propre.
+De ce fait, nous devons connaître l'endroit où s'exécutent les services et chaque environnement doit disposer d'un mécanisme pour télécharger les traces d'exécution.
+Le second défi est lié au dynamisme; en effet, les services peuvent être consommés par de nombreux clients en même temps, et de ce fait, les traces d'exécution peuvent s'entrelacer.
+Afin de résoudre ces problèmes, nous utilisons une approche basée sur celle de \citep{Yousefi2011} :
+
+\begin{itemize}
+
+\item Nous téléchargeons les traces d'exécution distribuées dans l'architecture du système à base de services en utilisant une base de connaissances préalable.
+Cette base de connaissances contient les dépôts où aller chercher les traces d'exécution, les protocoles, et toute autre information utile.
+
+\item Nous rassemblons les différents fichiers dans un fichier unique.
+
+\item Nous trions les traces d'exécution en utilisant leurs marqueurs temps.
+Cette étape nécessite que les différents environnements d'exécution des différents services soient synchronisés sur la même horloge.
+En règle générale, cette contrainte est facilement atteignable car les organisations peuvent se synchroniser avec des services d'horloge externe.
+
+\item Nous exploitons les relations appelant-appelé entre services et méthodes pour distinguer des blocs de transactions concurrentes.
+
+\item Nous classons les transactions par client (IP).
+\end{itemize}
+
+\section{\green{Identification des transactions}}
+
+Comme exposé dans les chapitres précédents, une transaction est une séquence d'appels de services et de méthodes.
+Parmi les transactions identifiées dans les traces d'exécution, nous nous focalisons uniquement sur les transactions contenant plus d'un service.
+En effet, notre but étant d'identifier des conceptions de faible qualité, un appel unique ne peut que difficilement nous renseigner sur l'architecture sous-jacente.
+\green{La figure \ref{traces} présente des traces d'exécution indentées\footnote{L'indentation ne fait pas partie du format. Elle a été introduite ici pour simplifier la lecture.} par transaction.} Une fois les transactions triviales --- contenant un appel --- retirées de l'ensemble des transactions, deux tables de transactions --- et donc de règles d'association séquentielles --- sont générées.
+La première des deux tables est au niveau des services, tandis que la seconde est au niveau des méthodes.
+Ainsi, à chaque fois qu'une méthode est invoquée, la première table enregistre les services impliqués dans cet appel alors que la seconde enregistre les méthodes impliquées.
+Générer deux tables à deux niveaux de granularité différent améliore la performance de nos algorithmes.
+En effet, la première table à haute granularité --- services --- est générée en premier, et les algorithmes de détection sont appliqués à ce niveau.
+Ensuite, l'investigation est poussée au second niveau de granularité --- les services + les méthodes --- uniquement pour les services désignés comme suspects à la fin de la première passe d'analyse.
+Durant la première phase, nous générons plus vite nos règles d'association séquentielles car il y a moins d'objets, et durant la seconde, nous traitons moins de traces puisque les services non-suspects sont ignorés.
+Le cumul des deux traitements s'est révélé plus performant qu'un traitement à granularité fine -- méthodes + services -- uniquement.
+
+\begin{figure}
+\framebox{\begin{minipage}[t]{\columnwidth}%
+\begin{center}
+\includegraphics[scale=0.45]{media/traces.png}
+\end{center}
+\end{minipage}}
+\caption{Traces d'exécution indentées par transaction.\label{traces}}
+\end{figure}
+
+\begin{table}[h!]
+\centering
+\scriptsize
+\begin{tabular}{|c|c|c|}
+\hline
+Transaction & Services participants & Méthodes participantes  \\
+\hline
+\hline
+1 (Lignes 1 à 12) & (A, B, C, D, D, E) &  (A, B, C, D, D2, E) \\
+2~~(Lignes 2 à 5) & (B, C) &  (B, C) \\
+3 (Lignes 8 à 11) & (D, E) &  (D2, E) \\
+\hline
+\end{tabular}
+\caption{Extraction désirée.\label{tableTransaction}}
+\end{table}
+
+\green{Le tableau \ref{tableTransaction} présente les transaction extraites par services et par méthodes pour l'exemple de la figure \ref{traces}.
+Nous y présentons les deux tables de transactions.}
+
+\green{Afin d'obtenir le résultat présenté par le tableau \ref{tableTransaction}, nous avons conçu un algorithme dédié.
+Cet algorithme (Algorithme \ref{algoExtract}) a pour seul but de parcourir les traces d'exécution afin d'en extraire des séquences qui seront par la suite utilisables par les algorithmes de fouille de règles d'association séquentielles.
+Cette algorithme vise l'extraction des différentes transactions impliquant plus d'un service.}
+
+L'intuition derrière cet algorithme est plutôt simple.
+En effet, pour chaque ligne dans les traces d'exécution, il détermine si la ligne est un début ou une fin de transaction.
+Si la ligne en cours est un début de transaction alors la position de l'algorithme dans les traces est sauvegardée puis nous cherchons la fin de la transaction en cours.
+Lorsque la fin est trouvée, toutes les opérations entre le début et la fin sont ajoutées à une nouvelle transaction.
+Comme les transactions peuvent être imbriquées, l'algorithme retourne à la position qu'il avait sauvegardée et cherche un nouveau début de transaction.
+Ce processus est répété jusqu'à la fin des traces d'exécution.
+
+Cet algorithme se compose de nombreuses boucles imbriquées.
+La première s'étendant des lignes 2 à 20 permet simplement de dérouler les traces d'exécution jusqu'à la fin.
+A l'intérieur de cette boucle, chaque trace $\kappa$ est analysée (ligne 4) afin de déterminer si c'est une trace de sortie (qui contient le mot clefs \texttt{exit}).
+Si nous sommes en présence d'une trace d'entrée alors, cette trace est ajoutée à la transaction courante (ligne 6) et notre position dans l'ensemble des traces est sauvegardée (ligne 5).
+La prochaine opération consiste à trouver la fin de cette transaction.
+Ceci est réalisé par la boucle \texttt{tant que} s'étendant des lignes 7 à 12.
+A l'intérieur de cette boucle, nous continuons à progresser dans l'ensemble des transactions et ajoutons les lignes ne contenant pas d'\texttt{end} à la transaction courante (ligne 10).
+Nous progressons tant que la ligne courante ne correspond pas à la sortie de la transaction courante (ligne 7).
+Lorsque les lignes $\kappa$ sont ajoutées à la transaction courante, en réalité, une ligne est ajoutée dans la transaction courante par service et une autre dans la transaction courante par méthode.
+La seule différence entre ces lignes est leur formatage.
+En effet, pour les méthodes, la ligne est gardée entière, tandis que pour les services, elle est tronquée pour ne conserver que le nom du service.
+Finalement, si la transaction n'est pas triviale, c-à-d, qu'elle a une taille supérieure à 1 (supérieur à 1 service), nous l'ajoutons à l'ensemble des transactions (ligne 14).
+Nous explorons ensuite la suite des transactions en replaçant notre index à une ligne après le début de la transaction que nous venons d'identifier à la ligne 16.
+
+
+\begin{algorithm}[H]
+\Indp
+\Donnees{Traces d'exécution}
+\Res{Transactions}
+\BlankLine 
+ \Pour{chaque ligne $\kappa$ dans les traces}{
+  \eSi{$\kappa$ n'est pas une trace de sortie}{
+  débutDeTransaction $\leftarrow$ positionCourante\;
+  $\kappa \leftarrow$ transactionCourante\;
+  	\Tq{$\kappa_{positionCourante} \neq \kappa_{debutDeTransaction}$ }{positionCourante++\;
+	\Si{$\kappa_{positionCourante}$ n'est pas une trace de sortie}{$\kappa_{positionCourante} \leftarrow$ transactionCourante\;}
+  	} 
+  	\Si{taille de transactionCourante $\neq$ 1}{transactionCourante  $\leftarrow$ Transactions\;}
+  	positionCourante $\leftarrow$ débutDeTransaction\;
+   }{
+   positionCourante++\;
+  }
+ }
+ \caption{Extraction de transactions depuis des traces d'exécution formatées.\label{algoExtract}}
+\end{algorithm}
+
+\newpage
+
+\section{\green{Adaptation de RuleGrowth pour la détection d'anti-patrons: SOARuleGrowth}}
+
+L'algorithme RuleGrowth \citep{Fournier-viger2011} est un algorithme qui permet de fouiller des règles d'association séquentielles dans de grand ensemble d'évènements qui peuvent être simultanés.
+Bien que performant en termes de temps d'exécution et de précision, l'algorithme RuleGrowth n'est pas tout à fait adapté à nos données.
+Dans les sous-sections suivantes, nous présentons l'algorithme RuleGrowth et les améliorations que nous lui avons apportés afin qu'il soit mieux adapté à nos données et d'augmenter notre précision.
+ 
+
+\subsection{RuleGrowth}
+
+
+L'algorithme \ref{RuleGrowth} expose les principes généraux de l'algorithme de RuleGrowth.
+Cet algorithme commence par différencier les éléments fréquents et les éléments non-fréquents.
+Ensuite, l'algorithme détermine si deux élèments juxtaposés possèdent les valeurs nécessaires, en termes de support et de confiance, pour la génération d'une règle.
+Enfin, si une règle est générée, elle peut être étendue en y ajoutant de nouveaux candidats à droite ou à gauche.
+
+
+Ces opérations nommées \textit{Chercher de nouveaux éléments à gauche} et \textit{Chercher de nouveaux éléments à droite} sont des tentatives d'expansion de la règle d'association à gauche et à droite.
+Dans les deux opérations d'expansion, l'algorithme considère une règle ne possédant qu'un élément de chaque coté (A$\rightarrow$B) puis parcourt les éléments sur la gauche (droite) de l'élément gauche (droit) des transactions dans lesquelles la règle (A$\rightarrow$B) apparaît.
+
+Si la règle d'origine agrémentée d'un nouvel élément à gauche (droite), est toujours supérieure aux minimums de confiance et de support requis, alors \textit{Chercher de nouveau éléments à gauche} (\textit{Chercher de nouveaux éléments à droite}) est rappelée de manière récursive avec une règle de la forme KA$\rightarrow$B (A$\rightarrow$BK) afin de continuer l'expansion.
+
+
+\green{Les éléments qui ne sont pas fréquents --- qui n'apparaissent pas assez pour atteindre le seuil support fixé --- sont retirés de l'ensemble des séquences (ligne 1).
+Ensuite, les éléments restants sont ajoutés à une liste d'éléments fréquents lors d'une boucle s'étendant des lignes 2 à 5.
+\`A la fin de ces deux premières opérations, nous avons une liste d'éléments sur lesquels travailler afin de générer des règles d'association séquentielles.
+Par la suite, nous trouvons une double boucle dans laquelle l'algorithme détermine combien de partenaire communs ont deux éléments qui sont juxtaposés (lignes 7 à 24).
+Dans la seconde boucle --- celle qui est imbriquée --- si le nombre de partenaires identifiés est supérieur au seuil, alors les règles sont générées (IJ, ligne 15 et JI, ligne 20).
+Finalement, l'algorithme tente d'étendre la règle générée en cherchant des éléments potentiels à droite et à gauche (lignes 16, 17, 21, 22).
+}
+
+\newpage
+
+\begin{small}
+
+
+
+%\linesnumbered
+%\SetLine
+\begin{algorithm}[H]
+Retirer les élèments qui ne sont pas fréquents\;
+
+\Pour{tous les elements $\kappa$ restant dans Sequences}{
+	\Si{Support de $\kappa$ $\succeq$ Support minimum}{
+		$\kappa \leftarrow $ ElementsFrequents\;
+	}
+	}
+	\Pour{tous les élèments $\kappa$I dans ElementsFrequents}{
+		OccurrenceI  $\leftarrow$ compter nombre de $\kappa_I$\;
+		PartenairesI  $\leftarrow$ Trouver partenaire dans OccurrenceI\;
+		
+			\Pour{tous les elements $\kappa$J dans 			ElementsFrequents à partir de position courante + 1}{
+		OccurrenceJ $\leftarrow$ compter nombre de $\kappa$J\;
+		PartenairesJ $\leftarrow$ Trouver partenaire dans OccurrenceJ\;
+		
+		Construire une liste de partenaires communs à I \& J\;
+		
+		\Si{le nombre de partenaires communs pour IJ est supérieur au support minimum}{
+			Générer la règle IJ\;
+			Chercher de nouveaux éléments à gauche\;
+			Chercher de nouveaux éléments à droite\;
+		}
+		
+		\Si{le nombre de partenaires communs pour JI est supérieur au support minimum}{
+			Générer la règle JI\;
+			Chercher de nouveaux éléments à droite\;
+			Chercher de nouveaux éléments à gauche\;
+		}
+	}	
+	}
+
+ \caption{Algorithme RuleGrowth simplifié\label{RuleGrowth}.}
+\end{algorithm}
+
+\end{small}
+
+\subsection{Motivations et changements}
+
+Malgré les performances affichées de \textit{RuleGrowth} et les excellents résultats que nous avons obtenus en l'utilisant --- 100\% rappel et une précision supérieure à celle de SODA d'une marge allant de 2.6\% à 16.67\% --- cet algorithme possède des limitations --- liées à nos données --- qui doivent être comblées afin d'extraire le maximum de connaissances des traces d'exécution.
+Afin de combler ces limitations, nous avons effectué trois changements majeurs sur l'algorithme originel décrits ci-bas.
+
+\begin{change}
+\label{time} Définir une fenêtre temporelle de travail
+\end{change}
+
+\green{\textit{RuleGrowth} ne possède pas de fenêtre temporelle définissable.
+En effet, comme montré par l'exemple d'introduction du Chapitre 2, les séquences et leurs items ne sont pas horodatés.
+ De ce fait, si un utilisateur fait une pause significative dans son utilisation du SBS, les services invoqués avant cette pause pourront être associés avec les services invoqués après cette pause et inversement.
+
+Dans le but de ne pas biaiser les associations, il est impératif de délimiter une fenêtre temporelle dans laquelle différents appels peuvent être associés.
+Les séquences acceptées devront donc avoir la forme suivante:  
+\begin{center}
+\texttt{timestamp\{a\}, timestamp\{b\}} 
+\end{center}
+où \texttt{timestamp} sera remplacé par le temps Unix ou Posix.
+Cette notation décrit un instant dans le temps comme le nombre de seconde écoulées depuis le 1 Janvier 1970 et \texttt{a} et \texttt{b} des items.
+A titre d'exemple, \texttt{1386197722\{a\}} représente l'invocation du service A le 5 décembre à 22H55 et 22 secondes.
+\texttt{1386197723\{b\}} est l'invocation du service b une seconde plus tard.
+
+Afin d'obtenir le comportement désiré, nous avons modifié la seconde boucle \texttt{Pour} de l'algorithme \ref{RuleGrowth} par une boucle \texttt{Tant que} qui s'achève lorsqu'il n'y a plus d'éléments à parcourir ou lorsque la fenêtre temporelle séparant deux éléments devient supérieure à celle indiquée par l'utilisateur.
+Néanmoins, comme présenté à la figure \ref{timewindows}, il faut faire la différence entre des traces qui sont temporellement distantes les unes des autres à cause d'une pause dans l'utilisation et celles qui sont distantes dans le temps à cause du temps d'exécution d'une méthode.
+Le cas particulier d'un arrêt imprévu du système en cours de transaction (\textit{crash}) est géré par l'algorithme d'extraction de transaction \ref{algoExtract}.
+De la même manière, les fonctions \textit{Chercher de nouveaux éléments à gauche} et \textit{Chercher de nouveaux éléments à droite} présentes dans l'algorithme \ref{RuleGrowth} aux lignes 16, 17 et 21, 22, respectivement, ont été modifiées pour prendre en compte la fenêtre temporelle.}
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.25]{media/timeWindows.png}
+\end{center}
+\caption{Exemple de fen\^etres de temps\label{timewindows}.}
+\end{figure}
+
+\begin{small}
+
+\end{small}
+
+%\linesnumbered
+%\SetLine
+\begin{algorithm}
+	\Pour{tout $\kappa_I$ $\in$ $Elements_{Frequents}$}{
+		Occurrence$_I$  $\leftarrow$ compter nombre de $\kappa_I$\;
+		Partenaires$_I$  $\leftarrow$ Trouver partenaire dans Occurrence$_I$\;
+		$\kappa_J$  $\leftarrow$ $Elements_{Frequents}$ à la position $\kappa_I$ + 1\;
+			\Tq{ $\kappa_J$ $\neq$ $\emptyset$ \& (MarqueurTemps$_{\kappa_J}$ - MarqueurTemps$_{\kappa_I} \leq $ Fenêtre$_{max}$)}{
+					OccurrenceI  $\leftarrow$ compter nombre de $\kappa$I\;
+		PartenairesI  $\leftarrow$ Trouver partenaire dans OccurrenceI\;
+		
+			\Pour{tout $\kappa$J $\in$ $Elements_{Frequents}$ à partir de $position_{courante}$+1}{
+		Occurrence$_J$  $\leftarrow$ compter nombre de $\kappa$J\;
+		Partenaires$_J$  $\leftarrow$ Trouver partenaire dans OccurrenceJ\;
+		
+		Construire une liste de partenaires communs à I \& J\;
+		
+		\Si{le nombre de partenaires communs pour IJ est  $>$ à $supp_{min}$}{
+			Générer la règle IJ\;
+			Chercher de nouveaux éléments à gauche et à droite\;
+		}
+		
+		\Si{le nombre de partenaires communs pour JI $>$ à $supp_{min}$}{
+			Générer la règle JI\;
+			Chercher de nouveaux éléments à gauche et à droite\;
+		}
+	}	
+			
+			$\kappa_J$  $\leftarrow$ ElementsFrequents a la position $\kappa_{J + 1}$\;
+	}
+	
+}
+ \caption{Modifications relatives au changement \ref{time}.\label{timealgo}}
+\end{algorithm}
+
+\begin{change}
+\label{threads}
+Regrouper des appels quasi-simultanés
+\end{change}
+
+\green{Les transactions extraites par l'algorithme \ref{algoExtract} sont uniquement composées d'éléments --- invocations --- simples.
+Du point de vue de RuleGrowth, cela signifie que les invocations ne sont pas simultanées.
+Bien que n'étant pas exactement simultanés, il peut être pertinent de regrouper des évènements \textit{presque} simultanés en un unique élément.
+Grâce à ce regroupement nous pourrons, par exemple, identifier des méthodes dont la première action est d'en appeler une autre et augmenter le poids de la relation (couplage) entre ces méthodes.}
+
+
+\begin{figure}[h!]
+\begin{center}
+\framebox{\begin{minipage}[t]{10cm}%
+IP timestamp void methodA.ServiceA();\\
+~~~~IP~~~~timestamp void methodB.ServiceB();\\
+~~~~IP~~~~timestamp end void methodB.ServiceB();\\
+//~~~~Traiement de la méthode A \\
+//~~~~Invocation des méthodes C, D et E entrecoupées de traitements.\\
+IP timestamp end void methodA.ServiceA();
+\end{minipage}}
+\end{center}
+\caption{Appels quasi-simultanés.}
+\end{figure}
+
+\green{ dispose d'une extraction identique à: \texttt{(A,B)(C)(D)\~(E)} plutôt que \texttt{(A)(B)(C)(D) (E)}.
+De cette manière nous renforçons la relation entre A et B.
+Une phase de prétraitement doit être ajoutée afin que si \texttt{timestamp\{a\}, timestamp\{b\}} possèdent un \texttt{timestamp} égal ou très proche, alors la séquence soit transformée en \texttt{timestamp\{a, b\}}.
+Cet ensemble sera désormais considéré comme une suite de deux évènements simultanés.
+L'algorithme \ref{threadsalgo} présente le prétraitement nécessaire sur les données avant de lancer l'algorithme \textit{SOARuleGrowth}.
+De la même manière que présenté précédemment par l'algorithme \ref{timealgo}, nous avons mis en place une boucle \texttt{Tant Que} qui prend fin lorsqu'il n'y a plus d'élément ou lorsque la fenêtre temporelle relative au rassemblement d'évènements est dépassée (lignes 5 à 7).
+Néanmoins, à l'intérieur de cette boucle, les éléments satisfaisant les conditions sont ajoutés à une liste d'éléments nommée composition (ligne 6), puis les éléments ajoutés sont supprimés de la liste principale d'éléments (ligne 8).
+Si la composition ainsi créée dispose d'éléments (ligne 10), alors nous rajoutons l'élément duquel nous étions parti à la tête de la composition et le supprimons de la liste principale (ligne 11 et 12).
+Enfin, nous ajoutons la composition nouvellement créée à la liste principale à la position courante (ligne 13).}
+
+
+%\linesnumbered
+%\SetLine
+\begin{algorithm}
+	\Pour{tous les Éléments}{
+		$\kappa_J$ $\leftarrow$ Élément à la position $\kappa_I$ + 1\;
+			\Tq{ $\kappa_J$ $\neq$ $\emptyset$ \& (MarqueurTemps$_{\kappa_J}$ - MarqueurTemps$_{\kappa_I} \leq $ Fenêtre$_{max}$)}{
+			$\kappa_J$ $\leftarrow$ composition\;
+			Supprimer $\kappa$J dans éléments\;
+			$\kappa_J$ $\leftarrow$ Élément à la position $\kappa$J + 1\;
+	}
+	
+	\Si{Taille de la composition\ $\succ$ 0}{
+		Placer $\kappa_I$ à la tête de la composition\;
+		Supprimer $\kappa_I$ dans éléments\;
+		composition $\leftarrow$ éléments à la position $\kappa_I$\;
+	}
+	
+}
+ \caption{Modifications relatives au changement \ref{threads}.\label{threadsalgo}}
+\end{algorithm}
+
+\newpage
+
+\begin{change}
+\label{chain}
+\'Eliminer les appels redondants
+\end{change}
+
+\green{Lors de nos tests préliminaires où nous avons utilisé la version originale de \textit{RuleGrowth}, une proportion significative de faux positifs provenaient des appels de services à leurs propres méthodes.
+Ainsi, si un \texttt{ServiceA} invoque sa propre méthode B au cours de l'invocation --- par un client externe ou un autre service --- de sa méthode A, alors des règles de type : \texttt{ServiceA.methodA $\rightarrow$ ServiceA.methodB} pouvaient être générées et fausser les métriques de couplage et de dépendance.
+En effet, l'algorithme ne doit pas considérer comme pertinent les sous-séquences de type : \texttt{\{ServiceA.methodA, ServiceA.methodB, ServiceA.methodC\}} car elles augmentent artificiellement le couplage du service en introduisant A comme partenaire de lui-même.
+Afin d'introduire ce comportement spécifique dans l'algorithme \textit{RuleGrowth}, nous avons imaginé l'algorithme \ref{chainalgo}.
+A chaque fois qu'une règle est sauvegardée, nous vérifions si deux éléments juxtaposés dans cette règle appartiennent au même service (ligne 3).
+Si tel est le cas, le second élément est supprimé de la règle (ligne 4).}
+
+
+%\linesnumbered
+%\SetLine
+\begin{algorithm}
+	\Pour{tous les élèments d'une règle d'association}{
+	
+	\Si{	($\kappa_J$ $\leftarrow$ $\kappa_I$ + 1)  $\neq$ $\emptyset$}{
+	
+		\Si{Service$_{\kappa_J}$ est egal à Service$_{\kappa_I}$}{
+			Supprimer $\kappa_J$ de la règle d'association\;
+			Calculer le support et la confiance de la règles sans  $\kappa_J$\;
+			\Si{Support ou Confiance inférieurs aux seuils fixés}{
+				Supprimer la règle\;
+			}
+		}
+	
+	}
+}
+ \caption{Modifications relatives au changement \ref{chain}.\label{chainalgo}}
+\end{algorithm}
+
+\green{\subsection{Impacts des modifications}}
+
+\green{Afin de mesurer l'impact de ces modifications, nous avons comparé les deux algorithmes en termes de nombres de règles générées, de longueur moyenne des règles, le temps et de la mémoire nécessaire à leur génération.
+Nous avons testé les algorithmes en utilisant les données utilisées pour nos expérimentations du prochain chapitre.
+Le figure \ref{nb-rules} expose le nombre de règles à des supports fixés (60\%, 40\%, 20\% et 10\%).
+Le nombre de règles générées par \textit{SOARuleGrowth} est inférieur de 36\% pour un support égal à 10\%.
+Cette différence significative est due aux changements interdisant de sauvegarder une règle composée d'éléments répartis avant et après une pause ainsi qu'au regroupement d'appels presque simultanés --- réduisant le nombre d'éléments, et donc, le nombre de possibilités pour créer des règles.}
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.6]{media/graph.jpg}
+\end{center}
+\caption{Nombre de règles\label{nb-rules}.}
+\end{figure}
+
+\green{Notre seconde mesure concerne la longueur moyenne des règles générées.
+Le graphe \ref{taille-rules} expose les différences entre \textit{SOARuleGrowth} et \textit{RuleGrowth}.
+Le changement~\ref{chain} spécifie l'élimination des règles qui augmentaient artificiellement le couplage d'un service.
+De plus, un patron \texttt{$ServiceA.methodA \Rightarrow Service.A.methodB$} sera aussi éliminé.
+En conséquence, la longueur moyenne des règles d'association diminue légèrement.}
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.6]{media/graph(1).jpg}
+\end{center}
+\caption{Longueur moyenne des règles d'association\label{taille-rules}.}
+\end{figure}
+
+\green{Le graphique \ref{mo-rules} présente l'impact de nos modifications en termes de mémoire nécessaire.
+On constate que \textit{SOARuleGrowth} est moins gourmand que son prédécesseur lorsque le support minimum à atteindre est haut car il traite moins d'éléments et donc moins d'éléments fréquents et de règles d'association.
+Cependant, la supériorité s'inverse pour un support à 10\%.
+Ceci est principalement est lié au fait que (1) les éléments traités par SOARuleGrowth sont plus gros, ils contiennent l'horodatage et (2) le temps requis pour le pré-traitement nécéssaire à \textit{SAORuleGrowth} est directement lié au nombre d'éléments à traiter. 
+Avec un support si faible, un nombre très conséquent d'éléments est traité, et donc la différence entre les algorithmes se fait ressentir.}
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.6]{media/graph(2).jpg}
+\end{center}
+\caption{Mémoire requise\label{mo-rules}.}
+\end{figure}
+
+\green{La dernière mesure que nous avons effectuée est présentée par la figure \ref{time-rules}.
+Cette dernière mesure le temps d'exécution des deux algorithmes.
+La différence n'est pas significative; en effet, au maximum, \textit{SOARuleGrowth} est plus lent que son prédécesseur de 7.8\%.
+Cette différence s'explique à cause du pré-traitement supplémentaire requis par \textit{SOARuleGrowth} par rapport à \textit{RuleGrowth}.}
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.6]{media/graph(3).jpg}
+\end{center}
+\caption{Temps d'exécution\label{time-rules}.}
+\end{figure}
+
+\section{Changement d'objectif} Cette section explique pourquoi SOMAD obtient de meilleurs résultats que SODA pour identifier des anti-patrons qui sont plus à même d'endommager la qualité de service d'un SBS.
+En effet, la présence d'un anti-patron dans une partie peu visitée du système fait courir des risques plus faibles aux créateurs du système.
+
+Les hypothèses de SOMAD changent l'objectif de la recherche d'anti-patrons SOA d'une considération de conception pure vers une considération d'utilisation.
+C'est à dire que nous cherchons à identifier les anti-patrons qui sont provoqués par la manière dont les utilisateurs consomment les services que le SBS offrent plutôt que par les collaborations statiques entre les services.
+ De ce fait, SOMAD néglige les valeurs de métriques basiques.
+ C'est un choix naturel, car SOMAD est une approche qui n'a pas accès aux valeurs exactes au travers des interfaces des services ou leurs implémentations.
+De plus, analyser un système à base de services via son utilisation plutôt que son architecture, comme l'indiquent les résultats expérimentaux décrits dans le chapitre \ref{exp}, entraîne une précision bien supérieure.
+Considérons un service nommée \texttt{Half-Deprecated Service} (figure \ref{Hds}) composé de quatre méthodes: A, B, C and D.
+Les méthodes C et D sont dépréciées\footnote{La dépréciation est, dans le domaine du développement logiciel, la situation où une ancienne fonctionnalité est considérée comme obsolète au regard d'un nouveau standard, bien qu'elle soit conservée dans les versions plus récentes pour des fins de compatibilité.} mais sont tout de même exposées pour assurer la rétro-comptabilité de ce service avec ces clients.
+
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.30]{media/half.jpeg}
+\end{center}
+\caption{Représentation pseudo-UML du \texttt{Half-Deprecated Service}.\label{Hds}}
+\end{figure}
+
+Une méthode pour calculer la cohésion d'un service est de compter combien de méthodes du service sont utilisées durant une session unique d'un utilisateur unique.
+Comme la moitié des méthodes sont dépréciées, il est fort probable que le client ne consomme que la moitié des méthodes.
+
+\begin{itemize}
+\item Soit le client est un ancien client et il utilisera les deux méthodes dépréciées.
+\item Soit le client est un nouveau client et il utilisera les deux méthodes non dépréciées.
+\end{itemize}
+
+De ce fait, si la cohésion est calculée de cette manière, le résultat sera 0.5 (2/4) et ce service sera considéré comme suspect pour les anti-patrons SOA qui sont identifiables par une faible cohésion.
+Au contraire, si la cohésion est calculée en utilisant une méthode basée sur les traces d'exécution, le résultat aura plus de chance d'être près de 1.
+En effet, les appels aux méthodes dépréciées ne devraient pas apparaître dans les règles d'association séquentielles, car ils ne devraient pas atteindre le seuil minimum de confiance et de support.
+
+\section{Conclusion}
+
+Dans ce chapitre, nous avons présenté l'implémentation qui supporte l'approche SOMAD ainsi qu'une amélioration de \textit{RuleGrowth} nommée \textit{SOARuleGrowth} et des considérations sur le changement d'objectif dans la détection  d'anti-patrons.
+Toutes ces modifications ont fait progresser notre précision de 3\% par rapport à l'algorithme classique. De plus, le temps d'exécution de \textsc{SOMAD} (\textit{SOARuleGrowth} + calcul des métriques et règles) est directement impacté par:
+\begin{itemize}
+\item \emph{La taille des traces d'exécution}. En effet, plus le nombre de traces augmente, plus les algorithmes de pré-traitement et de génération de règles d'association vont avoir besoin de temps.
+\item \emph{La complexité de connexion inter-services} (profondeur maximale des transactions). Ceci est dû au fait que le temps nécessaire au découpage des traces d'exécution en transaction est impacté par la profondeur de la pile. 
+\item \emph{Le nombre de métriques à calculer}. Une fois les règles d'association calculées il faut calculer les métriques des tableaux \ref{MetricsS} et \ref{MetriquesC} afin de détecter les anti-patrons. 
+\item \emph{La complexité des règles de détection des anti-patrons} (nombres d'intersections, exclusions,...).
+\item \emph{Le nombre de services}. En effet, les métriques doivent être calculées pour chaque service; ainsi le nombre de services est un facteur important.
+\end{itemize}
+
+
+Dans le prochain chapitre, nous aurons un aperçu de la réaction de \textit{SOARuleGrowth} face à la mise à l'échelle (\textit{scalability}). En effet, nous avons mené nos expériences sur deux systèmes différents qui ont la particularité d'être composés de 13 et 130 services. Les traces d'exécutions produites par ces systèmes, quant à elles, passent de $\sim$1500 à $\sim$10 000 lignes. Malgré l'augmentation de la taille du système (x10) et celle des traces (x6.6), le temps d'exécution moyen par anti-patron n'est multiplié que par $\sim$4 passant de 0.068s à 0.280s. Nous pouvons donc dire que SOMAD supporte bien la mise à l'échelle; d'autant plus qu'un système à base de services composé de 130 services peut être considéré comme un système de taille industrielle. Le chapitre \ref{exp} présentera aussi la validation empirique de notre approche et de nos algorithmes.
+

@@ -1,0 +1,402 @@
+\chapter{L'approche SOMAD}
+
+Dans ce chapitre, nous présentons l'approche SOMAD (\textit{Service Oriented Mining for Antipatterns Detection}), composée de cinq étapes, pour la détection d'anti-patrons basée sur les traces d'exécution produites par les systèmes à base de services.
+Cette nouvelle approche est une variante de SODA \citep{Nayrolles,Moha} basée sur les traces d'exécution.
+Les traces peuvent provenir de n'importe quelles implémentations SOA.
+SODA est applicable uniquement sur des systèmes SCA en utilisant un ensemble de scénarios prédéfinis.
+Plus particulièrement, dans SOMAD, nous spécifions un nouvel ensemble de métriques qui s'appliquent sur des règles d'association séquentielles extraites depuis les traces d'exécution.
+La figure~\ref{fig:The-SOMAD-approach} montre une vue d'ensemble de SOMAD.
+Les nouvelles étapes correspondantes à SOMAD sont en gris tandis que celles de SODA sont en blanc.
+La première étape \textit{(\'Etape 1.Inférence de métriques)} est supportée par la création d'hypothèses provenant de la description textuelle des anti-patrons SOA.
+Ces hypothèses sont utilisées dans cette étape pour inférer de nouvelles métriques dédiées à l'interprétation de règles d'association séquentielles.
+La seconde étape \textit{(\'Etape 4.Fouille de règles d'association)} a pour but d'extraire les règles d'association des traces d'exécution du système à base de services visé.
+Les règles d'association séquentielles suggèrent des relations intéressantes entre les services dans de larges amas de traces d'exécution.
+
+
+\begin{figure*}
+
+\includegraphics[scale=0.20]{media/SOMAD.png}%
+
+\caption{\label{fig:The-SOMAD-approach}Les approches SODA et SOMAD.
+Les cases grises correspondent aux nouvelles étapes de SOMAD ajoutées aux étapes de SODA en blanc.}
+\end{figure*}
+
+
+\section{\'Méthodologie de SOMAD}
+
+Dans cette section nous présentons toutes les étapes SOMAD.
+
+\subsection{\'Etape 1. Inférence de métriques} Un ensemble de métriques dédiées à l'interprétation de règles séquentielles d'association est inféré depuis trois hypothèses construites via la description textuelle des anti-patrons (tableau \ref{tab:List-of-SOA}).
+\blue{Tel que présenté par la figure \ref{infmetric}, cette étape a comme entrée des hypothèses basées sur les descriptions textuelles des anti-patrons et produit des métriques.}
+
+\begin{figure}[h]
+\begin{center}
+\includegraphics[scale=0.25]{media/step1.png}
+\end{center}
+\caption{\'Etape 1: Inférence de métriques.\label{infmetric}}
+\end{figure}
+
+
+Ces hypothèses correspondent à des heuristiques qui permettent l'interprétation de règles d'association séquentielles dans le but d'identifier les propriétés pertinentes des anti-patrons SOA.
+Après une étude minutieuse des descriptions textuelles des anti-patrons, nous constatons que les anti-patrons SOA peuvent être spécifiés en termes de couplage et de cohésion.
+Le couplage fait référence au degré de dépendance entre les services tandis que la cohésion représente la cohérence des responsabilités présentées par un service \citep{Perepletchikov2007, Perepletchikov2010}.
+
+\begin{hypothesis}
+\label{cpl}
+Si un service A implique un service B avec un fort support et une grande confiance, alors A et B sont fortement couplés.
+\end{hypothesis}
+
+\begin{hypothesis}
+\label{ocpl}
+Si un service apparait en tant que conséquent (antécédent) d'un grand nombre de règles d'association séquentielles, alors il a un fort couplage entrant (sortant).
+\end{hypothesis}
+
+Les hypothèses \ref{cpl} et \ref{ocpl} qualifient le couplage entre deux services et le couplage général en termes de couplage entrant et de couplage sortant.
+
+La cohésion est aussi largement utilisée dans les descriptions textuelles des anti-patrons, de ce fait, nous l'avons prise en compte dans l'hypothèse \ref{coh}.
+
+\begin{hypothesis}
+\label{coh}
+Si le nombre de méthodes d'un service donné est similaire au nombre de ses différents partenaires (Hypothèse \ref{ocpl}, le nombre de services avec qui il communique), alors le service n'est pas cohésif.
+\end{hypothesis}
+
+En se basant sur les trois hypothèses ci-dessus, nous avons créé des métriques spécifiques au domaine afin d'explorer les manifestations d'anti-patrons SOA cachées dans les règles d'association séquentielles.
+Afin de mieux comprendre comment nous passons des hypothèses aux métriques, la figure \ref{tiny-sample} donne un exemple pour le \textit{Tiny Service}.
+Nous pouvons voir que le Tiny Service est caractérisé par deux de nos trois hypothèses (Hypothèses 3.1 et 3.3) et ces hypothèses ont étés traduites en deux métriques distinctes nommées OC (\textit{Outgoing Coupling}) et NM (\textit{Number of Methods}).
+
+\begin{figure}[h]
+\begin{center}
+\includegraphics[scale=0.2]{media/Tiny-example.png}
+\end{center}
+\caption{Exemple de l'utilisation des hypothèses et métriques: Le \textit{Tiny Service}\label{tiny-sample}.}
+\end{figure}
+
+Les métriques que nous avons conçues et implémentées spécifiquement pour supporter SOMAD et qui seront utilisées pour créer des cartes de règles grâce à un DSL (\textit{Domain Specific Language}) sont présentées par les tableaux \ref{MetricsS} et \ref{MetriquesC}.
+Dans ces tableaux, des notations mathématiques standards ont été utilisées lorsque possible et étendues (ajout de symboles non standards) quand nécessaire.
+Les règles d'association peuvent être visualisées par (X $\rightarrow$ Y) avec X et Y respectivement l'antécédent et le conséquent d'une règle.
+\emph{K, L} sont les services partenaires.
+$AR$ représente l'ensemble complet des règles d'association, tandis que $AR_{s}$
+et $AR_{m}$ représente respectivement les sous-ensembles relatifs aux règles d'association au niveau service et au niveau méthode.
+\emph{$M_{S}$} dénote les méthodes d'un service donné $S$.
+Finalement, nous utilisons des symboles non-standards pour les séquences d'opérations: $[ ]$ est le constructeur de séquences, $\Cup$ signifie concaténé (\textit{append} en anglais) dans la séquence; $\Subset$ représente les sous-séquences d'une relation; et A $\lessdot$ B veut dire que le service A apparaît dans la séquence B.
+
+
+\begin{table}
+\begin{tabular*}{14cm}
+{@{\extracolsep{\fill}}p{14cm}}
+\hline 
+\textbf{\emph{Number of Matches (NMA(S))}}\textbf{ }: $\#\{X\rightarrow Y\in AR_{s}\mid S\lessdot(X\Cup Y)\}$
+\} 
+\tabularnewline
+\hline 
+Compte le nombre de règles dans lesquelles un service apparaît; que ce soit en tant qu'antécédent ou conséquent.
+\tabularnewline
+\hline 
+\hline 
+\textbf{\emph{Number of Diff.
+Partners (NDP(S))}} :\\
+$\#\{K\mid X\rightarrow Y\in AR_{s},S\lessdot X,K\lessdot Y\}$
+$+\#\{K\mid X\rightarrow Y\in AR_{s},S\lessdot Y,K\lessdot X\}$
+\tabularnewline
+\hline 
+Indique combien de partenaires a un service.
+En d'autres mots, cette métrique détermine si le service communique avec beaucoup d'autres services ou non.
+ \tabularnewline
+\hline 
+\hline 
+\textbf{\emph{Incoming Coupling (IC(S)) }}: $\sum_{L\in\{K\mid X\rightarrow Y\in AR_{s},K\lessdot X,S\lessdot Y\}}\frac{CID(S,X)}{NDP(S)}$ \tabularnewline
+\hline 
+Compte le nombre de fois où un service est utilisé.
+Cependant, au lieu de compter de manière classique l'apparition du service, nous utilisons une valeur contextuelle: $\frac{CID(S,X)}{NDP(S)}$ où X est le service partenaire.
+Ainsi, le couplage est inversement proportionnel au nombre de partenaires différents.
+\tabularnewline
+\hline 
+\hline 
+\textbf{\emph{Outgoing Coupling (OC(S)) }}: $\sum_{L\in\{K\mid X\rightarrow Y\in AR_{s},S\lessdot X,K\lessdot Y\}}\frac{CID(X,S)}{NDP(S)}$ \tabularnewline
+\hline 
+Les mêmes principes s'appliquent que ceux vus pour l'\textit{Incoming Coupling}.
+Cette métrique compte le nombre de fois où le service visé utilise d'autres services.
+\tabularnewline
+\hline 
+\hline 
+\textbf{\emph{Number of Methods (NM(S))}} : $\#\{K\mid X\rightarrow Y\in AR_{m},K\in M_{s},K\lessdot(X\Cup Y)\}$\tabularnewline
+\hline 
+Compte le nombre de méthodes différentes exposées dans les règles d'association séquentielles.
+Cette métrique porte uniquement sur le sous-ensemble $AR_{m}$.
+\tabularnewline
+\hline 
+\hline 
+\textbf{\emph{Cohesion (COH(S)) : }}$\frac{NDP(S)}{NM(S)}$ \tabularnewline
+\hline 
+Fournit un ratio comprenant le nombre de partenaires différents et le nombre de méthodes disponibles.\tabularnewline
+\hline 
+\end{tabular*}
+
+\caption{Métriques simples\label{MetricsS}.}
+
+
+\end{table}
+
+\begin{table}
+\begin{tabular*}{14cm}
+{@{\extracolsep{\fill}}p{14cm}}
+\hline 
+\textbf{\emph{Cross Invocation Dependencies (CID($S_{a},S_{b}$))}}
+: \\ $\#\{X\rightarrow Y\in AR_{s}\mid S_{a}\lessdot X,S_{b}\lessdot Y\}$
+$+\#\{X\rightarrow Y\in AR_{s}\mid S_{a}\lessdot Y,S_{b}\lessdot X\}$ \tabularnewline
+\hline 
+Cette métrique est cruciale pour la détection des manifestations enfouies dans les traces.
+En effet, elle explore les interactions typiques entre les services tout en ignorant les interactions non fréquentes (dû au seuil à atteindre, voir section \ref{ARM}).
+Pour obtenir cette information, CID compte toutes les règles d'association où un service $a$ ($S_a$) est présent dans la partie des antécédents et un service $b$ (S$_b$) dans la partie des conséquents ou vice et versa.
+\tabularnewline
+\hline 
+\hline 
+\textbf{\emph{Transitive Coupling (TC$(S_{a},S_{b})$)}} : \\
+$\#\{K\mid X\rightarrow Y\in AR_{s},S_{a}\lessdot X,S_{b}\lessdot Y,({[S_{a},K]\Subset X}\vee[K,S_{b}]\Subset Y)\}$\tabularnewline
+\hline 
+Transitive Coupling a été bâtie pour détecter un anti-patron SOA particulier, le \textit{Service Chain} (voir \ref{tab:List-of-SOA}).
+Tout d'abord, nous avons observé qu'une paire de services qui ne communiquent pas directement ne veut pas pour autant dire que les services ne sont pas couplés.
+Ceci est l'idée fondatrice du \textit{Service Chain} et de cette métrique.
+Afin d'identifier le couplage transitif dans les règles d'association, ce qui est beaucoup plus difficile que le couplage direct, nous avons besoin de représenter une chaîne dans les règles d'association.
+Un service $a$ ($S_a$) est dans l'antécédent d'une règle et un service $b$ ($S_b$) est dans le conséquent d'une autre règle.
+Ces deux règles sont connectées grâce à un service $k$ ($S_k$) qui apparait dans le conséquent de la première règle et dans l'antécédent de la seconde règle.
+Ainsi, dans un cas trivial, nous pourrions avoir :{[}a{]}$\rightarrow${[}b{]}
+et {[}b{]}$\rightarrow${[}c{]}.
+Dans cette configuration, a et c ne sont pas directement couplés mais si c est indisponible, il y a de bonnes chances pour que a et b le soient \'egalement.
+Des chaines de distance supérieur à 3 sont également possibles.
+\tabularnewline
+\hline 
+\end{tabular*}
+
+\caption{Métriques complexes\label{MetriquesC}.}
+
+
+\end{table}
+
+\subsection{\'Etape 2. Spécification d'anti-patrons SOA} Les métriques définies à l'étape 1 nous permettent de spécifier des anti-patrons SOA sous la forme de carte de règles.
+ Afin de combiner ces métriques, nous avons utilisé un DSL défini par \citep{Moha} et qui a ensuite été perfectionné par \citep{Demange2013} ainsi que \citep{Nayrolles}.
+Ce DSL est présenté dans la figure \ref{fig:BNF} sous la forme d'une grammaire Backus-Naur.
+Une règle décrit une métrique, une relation, ou une combinaison d'autres règles (ligne 3) en utilisant un ensemble d'opérateurs (ligne 6).
+Les métriques qui sont disponibles apparaissent ligne 11.
+Une métrique peut être définie comme une combinaison d'autres métriques (lignes 9 et 10).
+Chaque métrique peut être comparée à une ou plusieurs valeurs ordinales (ligne 7) -- un ensemble de cinq valeurs de l'échelle de Likert \citep{MichaelS.1971} de très faible (\textit{very low}) à très fort (\textit{very high}) --  ou être comparées à une valeur numérique (ligne 8) en utilisant des comparateurs (ligne 13).
+
+\begin{figure*}
+\includegraphics[scale=0.38]{media/BNF.png}%
+\caption{\label{fig:BNF} Grammaire BNF utilisée pour construire les cartes de règles.}
+\end{figure*}
+
+\blue{La figure \ref{specstep} présente les entrées de cette seconde étape, à savoir les descriptions textuelles des anti-patrons ainsi que les métriques issues de l'étape 1.
+Cette étape de spécification produit des cartes de règles.}
+
+
+\begin{figure}[h]
+\begin{center}
+\includegraphics[scale=0.25]{media/step2.png}
+\end{center}
+\caption{\'Etape 2: Spécification d'anti-patrons SOA.\label{specstep}}
+\end{figure}
+
+Les cartes de règles utilisées pour spécifier les anti-patrons SOA sont présentées par la figure \ref{fig:rules}.
+A titre d'exemple, la carte de règles correspondant au \textit{Tiny Service} (figure \ref{fig:rules}-b) est composée de trois règles.
+La première (ligne 2) est une intersection de deux règles (lignes 3 et 4) qui définissent deux métriques: un fort couplage sortant (\textit{Outgoing Coupling OC}) et un faible nombre de méthodes (\textit{Number of Methods NM}).
+
+\begin{figure}
+\begin{small}
+\scriptsize
+1~RULE\_CARD:~\emph{\textbf{MultiService}}~\{\\
+2~~RULE:~\emph{\textbf{MultiService}}\{INTER~\emph{\textbf{LowCohesion}}~\emph{\textbf{ManyMethods}}~\emph{\textbf{ManyMatches}}\};\\
+3~~RULE:~\emph{\textbf{LowCohesion}}\{COH~LOW\};\\
+4~~RULE:~\emph{\textbf{ManyMethods}}\{NM~HIGH\};\\
+5~~RULE:~\emph{\textbf{ManyMatches}}\{NMA~HIGH\};\\
+6~\};
+\vspace{-0.2cm}
+\begin{center}
+(a) Multi Service
+\end{center}
+\vspace{-0.2cm}
+1~RULE\_CARD:~\emph{\textbf{TinyService}}~\{\\
+2~~RULE:~\emph{\textbf{TinyService}}\{INTER~\emph{\textbf{HighOutgoingCoupling}}~\emph{\textbf{FewMethods}}\};\\
+3~~RULE:~\emph{\textbf{HighOutgoingCoupling}}\{OC~HIGH\};\\
+4~~RULE:~\emph{\textbf{FewMethods}}\{NM~LOW\};\\
+5~\};
+\vspace{-0.2cm}
+\begin{center}
+(b) Tiny Service
+\end{center}
+\vspace{-0.2cm}
+1~RULE\_CARD:~\emph{\textbf{ChattyService}}~\{\\
+2~~RULE:~\emph{\textbf{ChattyService}}\{INTER~\emph{\textbf{ManyPartners}}~\emph{\textbf{ManyMatches}}\};\\
+3~~RULE:~\emph{\textbf{ManyPartners}}\{NDP~VERY HIGH\};\\
+4~~RULE:~\emph{\textbf{ManyMatches}}\{NMA~VERY HIGH\};\\
+5~\};
+\vspace{-0.2cm}
+\begin{center}
+(c) Chatty Service
+\end{center}
+\vspace{-0.2cm}
+1~RULE\_CARD:~\emph{\textbf{BottleNeck}}~\{\\
+2~~RULE:~\emph{\textbf{BottleNeck}}\{INTER~\emph{\textbf{HighOutgoingCoupling}}~\emph{\textbf{HighIncomingCoupling}}\};\\
+3~~RULE:~\emph{\textbf{HighOutgoingCoupling}}\{OC~HIGH\};\\
+4~~RULE:~\emph{\textbf{HighIncomingCoupling}}\{IC~HIGH\};\\
+5~\};
+\vspace{-0.2cm}
+\begin{center}
+(d) BottleNeck Service
+\end{center}
+\vspace{-0.2cm}
+1~RULE\_CARD:~\emph{\textbf{KnotService}}~\{\\
+2~~RULE:~\emph{\textbf{KnotService}}\{INTER~\emph{\textbf{LowCohesion}}~\emph{\textbf{HighCrossInvocation}}\};\\
+3~~RULE:~\emph{\textbf{LowCohesion}}\{COH~LOW\};\\
+4~~RULE:~\emph{\textbf{HighCrossInvocation}}\{CID~HIGH\};\\
+5~\};
+\vspace{-0.2cm}
+\begin{center}
+(e) Knot Service
+\end{center}
+\vspace{-0.2cm}
+1~RULE\_CARD:~\emph{\textbf{ServiceChain}}~\{\\
+2~~RULE:~\emph{\textbf{ServiceChain}}\{\emph{\textbf{HighTransitiveCoupling}}\};\\
+3~~RULE:~\emph{\textbf{HighTransitiveCoupling}}\{TC~HIGH\};\\
+4~\};
+\vspace{-0.2cm}
+\begin{center}
+(f) Service Chain
+\end{center}
+\end{small}
+\vspace{-0.2cm}
+\caption{Cartes de règles\label{fig:rules} pour nos anti-patrons.}
+\end{figure}
+
+\subsection{\'Etape 3. Génération des algorithmes de détection} 
+
+Depuis les spécifications des anti-patrons SOA décrites avec la DSL, nous générons automatiquement les algorithmes de détection.
+Nous utilisons maintenant Ecore \citep{Sciamma2013} et Acceleo \citep{Obeo2005} pour automatiser la génération des algorithmes.
+\blue{La figure \ref{gen} expose les entrées de cette étape: les cartes de règles générées à l'étape 2 ainsi qu'un gabarit \texttt{Java}.
+Cette étape produit des algorithmes de détection directement exécutables.}
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.25]{media/step3.png}
+\end{center}
+\caption{\'Etape 3: Génération d'algorithmes.\label{gen}}
+\end{figure}
+
+Pour la génération automatique des algorithmes de détection, nous commençons par analyser syntaxiquement (\textit{parser} en anglais) les \textit{cartes de règles} pour chaque anti-patron et nous les représentons comme des modèles.
+Par la suite, nous utilisons Ecore pour les valider syntaxiquement par rapport au méta-modèle de notre DSL.
+Nous utilisons une génération de code automatique basée sur les modèles et fournie par Acceleo \citep{Obeo2005}.
+Pour ce faire, nous définissions un modèle unique pour toutes les cartes de règles qui contient des \textit{étiquettes}, qui seront par la suite, remplacées par les métriques définies dans la carte de règles.
+Finalement, le modèle unique est utilisé pour générer l'algorithme d'une carte de règles et produit une ou plusieurs classes Java, directement compilable et exécutable.
+
+
+La figure \ref{template} montre le modèle du \textit{Multi Service} que nous utilisons pour générer son algorithme de détection.
+\`A la première ligne de la figure \ref{template}, le modèle importe le méta-modèle de notre DSL.
+Il contient aussi les \textit{tags}, qui sont identifiables par des crochets, et qui correspondent aux variables qui vont être remplacées (\textit{rule card name}, \textit{rule names}, \textit{metrics}, \textit{values} et les différents opérateurs).
+Un seul modèle est requis pour toutes les cartes de règles.
+Ainsi, il est aisé de les maintenir.
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.2]{media/template.png}
+\end{center}
+\caption{Gabarit pour la génération automatique\label{template}.}
+\end{figure}
+
+La figure \ref{code} montre le code généré par Acceleo.
+Ce code est basé sur la carte de règles de la figure \ref{template}.
+Cette génération crée une classe Java avec les différents opérateurs et les différentes métriques.
+La classe générée est directement compilable et exécutable en utilisant un \textit{Java Class Loader}.
+Les ingénieurs n'ont plus qu'à fournir l'implémentation concrète des métriques qu'ils souhaitent utiliser.
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.3]{media/multijava.png}
+\end{center}
+\caption{Capture d'écran du code généré  pour le \textit{Multi-service.} \label{code}.}
+\end{figure}
+
+Ce processus est complètement automatisé pour éviter les tâches manuelles qui sont source d'erreurs.
+Ce processus garanti aussi la traçabilité entre la spécification des anti-patrons SOA faite avec la DSL et la détection qui sera effectuée sur le système à base de services.
+De ce fait, les ingénieurs logiciels peuvent se focaliser sur la spécification des anti-patrons, sans avoir à considérer les détails techniques de l'aggrégation de règles et métriques.
+
+Nous précisons aussi que, dans cette étape, la génération automatique des algorithmes était déjà présente dans SODA et a été améliorée par Christopher Robert. 
+Nous l'avons juste utilisée afin de créer de nouveaux algorithmes composés de nos métriques et capable de détecter des anti-patrons en interprétant les règles d'association séquentielles.
+
+\subsection{\green{\'Etape 4. Fouille des règles d'association}} Les traces d'exécution sont analysées pour extraire les règles d'association séquentielles.
+\blue{Ce processus est illustré par la figure \ref{fouille}.}
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.25]{media/step4.png}
+\end{center}
+\caption{\'Etape 4: Fouille de règles d'association.\label{fouille}}
+\end{figure}
+
+
+Les règles d'association séquentielles sont fouillées depuis une collection de traces d'exécution en utilisant un support et une confiance minimum.
+Une transaction est un ensemble d'appels de services et de méthodes ordonnés dans le temps.
+Nous rappelons que le support d'un patron\footnote{Dans le contexte des règles d'association; le mot \textit{patron} représente un motif dans les traces d'exécution et non un patron de conception logiciel.}, c'est-\`a-dire, d'une séquence d'items (appels de services ou méthodes), est le pourcentage global de transactions qui contiennent ce patron. Quant à la confiance, elle mesure la vraisemblance que la partie conséquente soit après la partie antécédente dans une même transaction.
+
+Pour extraire les règles d'association séquentielles, deux possibilités s'offraient à nous.
+D'une part, la fouille de patron séquentiel où les algorithmes de fouille de règles ont été créés pour des structures légèrement plus générales que celles utilisées ici.
+Dans les faits, les patrons séquentiels sont définis par des transactions qui représentent des séquences d'ensemble.
+Des travaux intéressants pour la découverte de patrons séquentiels ont été publiés, e.g, la méthode PrefixSpan \citep{Mortazavi-Asl2004}.
+D'autre part, les traces d'exécution ne contiennent pas réellement de pures transactions séquentielles.
+En effet, leur structure sous-jacente est composée d'éléments individuels.
+De telles données sont connues depuis le milieu des années 90, cependant, elles ont reçu moins d'attention de la part de la communauté de la fouille de données; sans doute parcequ'elles sont moins intéréssantes à fouiller.
+Néanmoins, de nombreuses applications pratiques ont été imaginées dans des domaines où ce genre de données prolifère, notamment dans la fouille de traces d'exécution de logiciel.
+Dans la littérature générale de la fouille de données, fouiller des séquences pures, en opposition à la fouille de séquence composées d'ensembles, a été traitée par la fouille d'épisodes \citep{Mannila1997}.
+Les épisodes sont composés d'évènements dans le sens où un appel de service est un évènement.
+Sans aucun doute, le domaine disposant de la plus grande base de connaissance sur le sujet est la fouille d'utilisation de site web.
+Les données d'entrées sont à nouveau des traces d'exécution, néanmoins cette fois les traces sont des requêtes envoyées à un serveur web \citep{Pei2000}.
+Il est important de souligner que les patrons séquentiels sont plus généraux que ceux basés sur des séquences pures.
+En effet, les algorithmes de fouille qui ont été créés  pour les premiers peuvent être moins efficace que ceux créés pour les seconds car des étapes supplémentaires peuvent être requises pour lister les ensembles significatifs.
+Néanmoins, nous avons choisi d'utiliser un algorithme de fouille de patrons et règles séquentielles qui, \green{malgré les spécificités de nos données --- composées d'épisodes et non de séquences --- fût performant. Nous avons utilisé tout d'abord l'algorithme RuleGrowth \citep{Fournier-viger2011} qui semblait être le plus adapté et a l'avantage d'être disponible gratuitement\footnote{\url{http://www.philippe-fournier-viger.com/spmf/}}}.
+Bien que non optimisé pour les séquences pures, ses performances sont plus que satisfaisantes.
+Cependant, dans le prochain chapitre, nous présenterons une évolution de RuleGrowth nommée SOARuleGrowth qui est plus adaptée à nos données.
+Pour résumer, à la fin de cette étape, nous avons extrait les relations pertinentes entre les services.
+Ces relations ont la forme de règles d'association séquentielles.
+
+
+La figure \ref{tinyR} présente le processus de fouille de règles d'association séquentielles dans les traces d'exécution appliqué au \textit{Tiny Service}.
+Dans les traces d'exécution, on constate que le Service A ne dispose que d'une seule méthode, la méthode A.
+De plus cette méthode fait appel aux services B, C ou D.
+Ainsi, les règles d'association générées pour cet ensemble de traces factices sont : A $\rightarrow$ B, A $\rightarrow$ C et A $\rightarrow$ D.
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.2]{media/Tiny-rules.png}
+\end{center}
+\caption{Fouille de règles d'association depuis les traces d'exécution: \textit{Le Tiny Service}.\label{tinyR}}
+\end{figure}
+
+\subsection{\'Etape 5. Détection d'anti-patron SOA} 
+
+Cette dernière étape consiste à appliquer les algorithmes de détection  générés à l'étape 3 sur les règles d'association séquentielles fouillées à l'étape 4.
+A la fin de cette étape, les services du système suspectés d'être impliqués dans un anti-patron SOA sont identifiés, \blue{comme présenté à la figure \ref{detec}.}
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.25]{media/step5.png}
+\end{center}
+\caption{\'Etape 5: Détection d'anti-patrons SOA.\label{detec}}
+\end{figure}
+
+Le processus de détection est illustré dans la figure \ref{TinyD}.
+On s'aperçoit que toutes les règles d'association générées depuis les traces d'exécution de la figure \ref{tinyR} impliquent une seule et même méthode: \texttt{SA.mA}.
+De plus, cette méthode communique avec trois services distincts: B, C et D.
+De ce fait, les resultats des métriques NM (\textit{Number of Methods}) et OC (\textit{Outgoing Coupling}) seront respectivement 1 et 3.
+Si ces valeurs sont jugées statistiquement faibles et hautes sur l'échelle de Likert respectivement, alors le service A sera identifié comme un \textit{Tiny Service}, comme indiqué dans la carte de règles présentée par la figure \ref{fig:rules}-b.
+
+\begin{figure}
+\begin{center}
+\includegraphics[scale=0.2]{media/Tiny-Detection.png}
+\end{center}
+\caption{Détection d'un \textit{Tiny Service}.\label{TinyD}}
+\end{figure}
+
+Au cours de ce chapitre, nous avons présenté en détail les cinq étapes composant l'approche SOMAD pour la détection automatique d'antipatrons dans les applications à base de services.
+Nous avons aussi présenté les hypothèses, métriques et processus de génération d'algorithme utilisés pour cette détection.
+Dans le prochain chapitre, nous présentons l'implémentation qui supporte l'approche SOMAD.
+
+

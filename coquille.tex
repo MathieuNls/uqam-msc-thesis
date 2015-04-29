@@ -1,0 +1,100 @@
+\documentclass[12pt]{memoireuqam1.3}
+
+\usepackage{graphicx}% Pour les figures
+\usepackage[latin1]{inputenc} % Pour utiliser les caractères accentués
+\usepackage[francais]{babel}
+\usepackage{textcomp}
+\usepackage[toc,page]{appendix} 
+\usepackage{caption}
+\usepackage{url}
+\usepackage[round]{natbib}
+\usepackage{multirow}
+\usepackage{longtable}
+\usepackage{amssymb}
+\usepackage[algochapter,linesnumbered]{algorithm2e}
+\usepackage[T1]{fontenc}
+\usepackage{url}
+\usepackage{pdfpages}
+%\input macro  % Pour les définitions personnelles
+
+\newcommand{\red}[1]{#1} %MAJOR CHANGES
+\newcommand{\blue}[1]{#1} %MINOR CHANGES
+\newcommand{\green}[1]{#1} % TO DO
+\newcommand{\comment}[1]{}  
+
+\newtheorem{hypothesis}{Hypoth\`ese}[chapter]
+\newtheorem{change}{Changement}[chapter]
+
+\SetAlgorithmName{Algorithme}{algorithme}{Liste d'Algorithmes}
+
+\let\oldemptyset\emptyset
+\let\emptyset\varnothing
+
+\begin{document}
+
+%%%%%%%%%%%%%%%%%%%%
+% Pour la page titre
+%%%%%%%%%%%%%%%%%%%%
+\title{Am\'elioration de la D\'etection d'Anti-Patrons dans les Syst\`emes \`a Base de Services par la Fouille de Traces d'Ex\'ecution}
+\author{Mathieu Nayrolles}
+% Année et mois courant sauf si spécifié autrement pas \degreemonth et \degreeyear
+\degreemonth{Mars}
+\degreeyear{2014}
+\uqammemoire %% ou \uqamthese ou \uqamrapport
+\matiere{informatique}
+
+
+\thispagestyle{empty}        % La page titre n'est pas numérotée
+\maketitle
+
+%%%%%%%%%%%%%%%%%%%%
+% Page préliminaires
+%%%%%%%%%%%%%%%%%%%%
+\renewcommand \bibname{R\'EF\'ERENCES}% FACULTATIF
+%si vous voulez qu'apparaisse le titre RÉFÉRENCES plutôt que BIBLIOGRAPHIE
+
+\renewcommand \listfigurename{LISTE DES FIGURES}
+\renewcommand \appendixname{APPENDICE}
+\renewcommand \figurename{Figure}
+\renewcommand \tablename{Tableau}
+
+\pagenumbering{roman} % numérotation des pages en chiffres romains
+\addtocounter{page}{1} % Pour que les remerciements commencent à la page ii
+\include{remerciements}
+\tableofcontents % Pour générer la table des matières
+\listoftables % Pour générer la liste des tableaux
+\listoffigures % Pour générer la liste des figures
+\include{resume}
+% Utilisez l'environnement  abstract pour rédiger votre résumé
+
+
+%%%%%%%%%%%%%%%%%%%%
+% Document principal
+%%%%%%%%%%%%%%%%%%%%
+
+\include{Introduction}
+% Utilisez l'environnement  introduction pour rédiger votre introduction
+\include{Chap1}
+\include{Chap2}
+\include{Chap3}
+\include{Chap4}
+\include{Chap5}
+\include{Conclusion}
+% Utilisez l'environnement  conclusion pour rédiger votre conclusion
+
+%%%%%%%%%%%%%%%%%%%%
+% Page liminaires
+%%%%%%%%%%%%%%%%%%%%
+
+\begin{appendices} 
+\chapter{Improving SOA Antipatterns Detection in Service Based Systems by Mining Execution Traces} 
+
+Publi\'e dans les actes de la WCRE'13 (Working Conference on Reverse Engineering 2013) par \textbf{Mathieu Nayrolles}, Naouel Moha et Petko Valtchev.
+\newpage
+\includepdf[pages=-,pagecommand=\thispagestyle{plain}]{media/WCRE.pdf}
+
+\end{appendices}
+
+\bibliographystyle{apalike-uqam}
+\bibliography{my_papers}
+\end{document}
